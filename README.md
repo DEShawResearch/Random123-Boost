@@ -1,4 +1,9 @@
-The goal of this source tree is to develop a new family of
+Random123-Boost
+===============
+
+Proposed Random123 functions for Boost.Random
+
+The purpose of this source tree is to develop a new family of
 "Counter Based Uniform Random Number Generators" (CBURNGs) for the
 Boost.Random library.  CBURNGs were introduced in the paper, "Parallel
 Random Numbers -- As Easy as 1, 2, 3", by Salmon, Moraes, Dror & Shaw,
@@ -207,5 +212,3 @@ Parallel programs can use this to "leapfrog" multiple sequences over
 one another in different threads, or it can be used to initialize
 generators in different threads with starting points that are
 separated by enough to avoid overlap.
-
-
