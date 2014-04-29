@@ -159,13 +159,46 @@ void run(int iter, const std::string & name, RNG rng)
 }
 
 template <typename Prf>
-void run_cburng(const std::string& name, int iter){
+void  __attribute__((noinline)) run_cburng(const std::string& name, int iter){
     std::string pfx= "counter_based_urng<" + name + ">";
     // Initialize the Prf with a key not known at compile time.
     // Otherwise, the compiler might elide some of the key-related
     // code.
-    typename Prf::key_type k = {iter};
+    typename Prf::key_type k = {typename Prf::key_type::value_type(iter)};
     run(iter, pfx, boost::random::counter_based_urng<Prf>(Prf(k), typename Prf::domain_type()));
+}
+
+void do_threefry(int iter){
+  // WARNING - if we include the 2x32 tests, then gcc-4.8 reports
+  // *much lower* (3x) performance for some of the other functions.
+  // Wild guess - we've hit some limit meant to prevent too much
+  std::cout << "Threefry: with recommended safety margin\n";
+  run_cburng<boost::random::threefry<4, uint64_t> >("threefry4x64", iter);
+  run_cburng<boost::random::threefry<4, uint32_t> >("threefry4x32", iter);
+  run_cburng<boost::random::threefry<2, uint64_t> >("threefry2x64", iter);
+  //run_cburng<boost::random::threefry<2, uint32_t> >("threefry2x32", iter);
+
+  std::cout << "Threefry:  Crush-resistant, with no safety margin\n";
+  // Note - on a 3.07GHz Xeon 5667 (Westmere) threefry4x64-12 should
+  // be the winner at around 1.7 CPB.
+  run_cburng<boost::random::threefry<4, uint64_t, 12> >("threefry4x64-12", iter);
+  run_cburng<boost::random::threefry<4, uint32_t, 12> >("threefry4x32-12", iter);
+  run_cburng<boost::random::threefry<2, uint64_t, 13> >("threefry2x64-13", iter);
+  //run_cburng<boost::random::threefry<2, uint32_t, 13> >("threefry2x32-13", iter);
+}
+
+void do_philox(int iter){
+  std::cout << "Philox: with recommended safety margin\n";
+  run_cburng<boost::random::philox<4, uint64_t> >("philox4x64", iter);
+  run_cburng<boost::random::philox<4, uint32_t> >("philox4x32", iter);
+  run_cburng<boost::random::philox<2, uint64_t> >("philox2x64", iter);
+  run_cburng<boost::random::philox<2, uint32_t> >("philox2x32", iter);
+
+  std::cout << "Philox:  Crush-resistant, with no safety margin\n";
+  run_cburng<boost::random::philox<4, uint64_t, 7> >("philox4x64-7", iter);
+  run_cburng<boost::random::philox<4, uint32_t, 7> >("philox4x32-7", iter);
+  run_cburng<boost::random::philox<2, uint64_t, 7> >("philox2x64-6", iter);
+  run_cburng<boost::random::philox<2, uint32_t, 7> >("philox2x32-7", iter);
 }
 
 int main(int argc, char*argv[])
@@ -182,13 +215,11 @@ int main(int argc, char*argv[])
 #endif
     atoi(argv[1]);
 
-  std::cout << "\nURNGs:\n";
+  std::cout << "\nPseudo-random functions:\n";
   run_cburng<IdentityPrf<2, uint64_t> >("Ident2x64", iter);
-  run_cburng<boost::random::philox<2, uint64_t> >("philox2x64", iter);
-  run_cburng<boost::random::philox<4, uint64_t> >("philox4x64", iter);
-  run_cburng<boost::random::philox<4, uint64_t, 7> >("philox4x64-7", iter);
-  run_cburng<boost::random::threefry<2, uint64_t> >("threefry2x64", iter);
-  run_cburng<boost::random::threefry<4, uint64_t, 13> >("threefry4x64-13", iter);
+
+  do_threefry(iter);
+  do_philox(iter);
   
   return 0;
 }

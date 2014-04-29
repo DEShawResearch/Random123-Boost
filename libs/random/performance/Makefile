@@ -35,7 +35,6 @@ All:
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 CPPFLAGS+= -I../../..
-LDLIBS+= -lboost_unit_test_framework # -lgmpxx -lgmp #-lcrypto
 
 ifeq ($(CXX),icpc)
 # To get icpc to work with boost we have to link against
@@ -62,9 +61,9 @@ endif
 %.s : %.c
 	$(CC) -S $(filter-out %gdb,$(CFLAGS) $(CPPFLAGS)) $<
 
-HDRS:=../../../boost/random/*.hpp ../../../boost/random/detail/*.hpp *.hpp *.ipp Makefile
+HDRS:=../../../boost/random/*.hpp ../../../boost/random/detail/*.hpp Makefile
 
-Binaries:=$(basename $(wildcard test_*.cpp))
+Binaries:=random_speed prf_speed
 
 All: $(Binaries)
 $(Binaries) : % : %.o
@@ -72,8 +71,6 @@ $(Binaries:%=%.o): $(HDRS)
 $(Binaries:%=%.s): $(HDRS)
 
 $(filter test_%,$(Binaries:%=%.o)): override CPPFLAGS+=-DBOOST_TEST_DYN_LINK
-
-test_philox2x64.o : override COMMONFLAGS+= -Wno-strict-aliasing -Wno-sequence-point
 
 .PHONY: test-env
 test-env:
