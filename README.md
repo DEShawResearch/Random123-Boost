@@ -1,5 +1,5 @@
-The primary goal of this source tree is to add a new family of
-"Counter Based Uniform Random Number Generators" (CBURNGs) to the
+The goal of this source tree is to develop a new family of
+"Counter Based Uniform Random Number Generators" (CBURNGs) for the
 Boost.Random library.  CBURNGs were introduced in the paper, "Parallel
 Random Numbers -- As Easy as 1, 2, 3", by Salmon, Moraes, Dror & Shaw,
 which won the Best Paper award at the SC'11  conference:
@@ -27,15 +27,15 @@ These features make them ideal for parallel computation.
 Consider the following program fragment, using a conventional
 RandomNumberEngine, mt19937:
 
-using namespace boost::random;
-mt_19937 rng(seed); // seed may come from the command line
-normal_distribution nd;
-for(size_t i=0; i<atoms.size(); ++i){
-    float boltzmannfactor = sqrt(kT/atoms[i].mass);
-    atoms[i].vx = boltzmannfactor*nd(rng);
-    atoms[i].vy = boltzmannfactor*nd(rng);
-    atoms[i].vz = boltzmannfactor*nd(rng);
-}
+    using namespace boost::random;
+    mt_19937 rng(seed); // seed may come from the command line
+    normal_distribution nd;
+    for(size_t i=0; i<atoms.size(); ++i){
+        float boltzmannfactor = sqrt(kT/atoms[i].mass);
+        atoms[i].vx = boltzmannfactor*nd(rng);
+        atoms[i].vy = boltzmannfactor*nd(rng);
+        atoms[i].vz = boltzmannfactor*nd(rng);
+    }
 
 Now imagine parallelizing this loop over a number of threads or cores.
 The conventional approach is to create an independent generator in
@@ -55,20 +55,20 @@ CBRNGs overcome all these problems.  With CBRNGs, the code looks like
 this (see libs/random/examples/counter_based_example.cpp for a fully
 worked example):
 
-using namespace boost::random;
-typedef threefry<4, uint32_t> Prf;
-normal_distribution nd;
-Prf::key_type key = {seed};
-Prf prf(key);  // seed may come from command line
-for(size_t i=0; i<atoms.size(); ++i){
-    float boltzmannfactor = sqrt(kT/atoms[i].mass);
-    Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
-    counter_based_urng<Prf> cbrng(prf, d);
-    nd.reset();
-    atoms[i].vx = boltzmannfactor*nd(cbrng);
-    atoms[i].vy = boltzmannfactor*nd(cbrng);
-    atoms[i].vz = boltzmannfactor*nd(cbrng);
-}
+    using namespace boost::random;
+    typedef threefry<4, uint32_t> Prf;
+    normal_distribution nd;
+    Prf::key_type key = {seed};
+    Prf prf(key);  // seed may come from command line
+    for(size_t i=0; i<atoms.size(); ++i){
+        float boltzmannfactor = sqrt(kT/atoms[i].mass);
+        Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
+        counter_based_urng<Prf> cbrng(prf, d);
+        nd.reset();
+        atoms[i].vx = boltzmannfactor*nd(cbrng);
+        atoms[i].vy = boltzmannfactor*nd(cbrng);
+        atoms[i].vz = boltzmannfactor*nd(cbrng);
+    }
 
 Let's consider the code changes between the two fragments:
 
@@ -79,37 +79,40 @@ Function and a value from the Pseudo-Random Function's domain are
 required to construct a counter_based_urng.  E.g., these lines in the
 example:
 
-    Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
-    counter_based_urng<Prf> cbrng(prf, d);
+        Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
+        counter_based_urng<Prf> cbrng(prf, d);
 
-In C++11, with initializer-lists, this might be shortened to:
+    In C++11, with initializer-lists, this might be shortened to:
 
-   counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
+       counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
 
-Creation and destruction of the counter_based_urng is much faster than
-actually generating random values or processing them through a
-distribution, so it's reasonable to create and destroy the cbrng every
-time through the loop.
-
-Counter_based_urngs constructed from the same domain value and the
-same PRF are identical, i.e., they will generate exactly the same
-sequence.  On the other hand, counter_based_urngs constructed from
-domain values that differ in even a single bit generate independent,
-non-overlapping sequences of random values.  Thus, by choosing a value
-in the domain that encodes some program-specific state (e.g.,
-atoms[i].id and timestep), we are guaranteed to produce a unique
-stream for each atom at each timestep that is statistically
-independent of all other streams.  Notice that the random values
-generated for a particular atom at a particular timestep are
-independent of the number of threads or the assignment of atoms to
-threads.  The additional constant THERMALIZE_CTXT is used to
-distinguish this loop from any other loop or context in the program,
-eliminating the possibility that the same sequence will be generated
-elsewhere in the program.
+    Creation and destruction of the counter_based_urng is much faster than
+    actually generating random values or processing them through a
+    distribution, so it's reasonable to create and destroy the cbrng every
+    time through the loop.
+    
+    Counter_based_urngs constructed from the same domain value and the
+    same PRF are identical, i.e., they will generate exactly the same
+    sequence.  On the other hand, counter_based_urngs constructed from
+    domain values that differ in even a single bit generate independent,
+    non-overlapping sequences of random values.  Thus, by choosing a value
+    in the domain that encodes some program-specific state (e.g.,
+    atoms[i].id and timestep), we are produce a unique
+    stream for each atom at each timestep that is statistically
+    independent of all other streams.  Notice that the random values
+    generated for a particular atom at a particular timestep are
+    independent of the number of threads or the assignment of atoms to
+    threads.  The additional constant THERMALIZE_CTXT is used to
+    distinguish this loop from any other loop or context in the program,
+    eliminating the possibility that the same sequence will be generated
+    elsewhere in the program.
 
 - Since it models a URNG, cbrng can be passed as an argument to the
 normal_distribution, nd.  In order to make each atom independent,
-nd.reset() is called each time through the loop.
+
+        nd.reset() 
+    
+    is called each time through the loop.
 
 - PRFs are keyed.  I.e., the Prf constructor takes a key_type as an
 argument.  Two Prfs of the same type, initialized with the same key
@@ -117,10 +120,10 @@ are indistinguishable.  On the other hand, two Prfs constructed from
 keys that differ in any way, even by a single bit, will give rise to
 statistically independent counter_based_urngs and output streams.
 
-In the example, we initialize the PRF outside the loop with:
+    In the example, we initialize the PRF outside the loop with:
 
-   Prf::key_type key = {seed};
-   Prf prf(key);  // seed may come from command line
+        Prf::key_type key = {seed};
+        Prf prf(key);  // seed may come from command line
 
 
 
