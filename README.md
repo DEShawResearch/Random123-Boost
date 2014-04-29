@@ -89,7 +89,7 @@ example:
 
     In C++11, with initializer-lists, this might be shortened to:
 
-       counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
+         counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
 
     Creation and destruction of the counter_based_urng is much faster than
     actually generating random values or processing them through a
@@ -102,7 +102,7 @@ example:
     domain values that differ in even a single bit generate independent,
     non-overlapping sequences of random values.  Thus, by choosing a value
     in the domain that encodes some program-specific state (e.g.,
-    atoms[i].id and timestep), we are produce a unique
+    atoms[i].id and timestep), we produce a unique
     stream for each atom at each timestep that is statistically
     independent of all other streams.  Notice that the random values
     generated for a particular atom at a particular timestep are
@@ -135,16 +135,16 @@ statistically independent counter_based_urngs and output streams.
 Pseudo-random functions:  Philox and Threefry
 ---------------------------------------------
 
-Two Pseudo-Random functions implemented in this source tree: threefry
+Two Pseudo-Random functions are implemented in this source tree: threefry
 and philox.  Both are templated over an unsigned width, an unsigned
-integer type, and a round-count (which takes a reasonable and safe
+integer value type, and a round-count (which takes a reasonable and safe
 default value).  For example:
 
    threefry<4, uint32_t>
    philox<2, uint64_t>
 
 All PRFs have a key_type, a domain_type, and a range_type, all
-of which are boost::arrays of the underlying unsigned type.  I.e.,
+of which are boost::arrays of the underlying value type.  I.e.,
 
    threefry<N, U>::key_type    = boost::array<U, N>
                    domain_type = boost::array<U, N>
