@@ -1,0 +1,23 @@
+TODO:
+----
+o Documentation
+ - !!!
+o tests (use the Boost.Test framework)
+ - STARTED:  Concept checkers
+ - counter_based_urng and counter_based_urng methods
+   o the existing boost test_generator.ipp is a good start, but
+     we need more:
+     + increments that wrap and that run out
+     + decrements/replay(?)
+     + seek/tell
+     + Engine(k)/seed(k)/getseed()
+     + concept checker
+     + kats for default-initialized engines.
+ - test philox with and without asm mulhilo
+o portability
+ - implement mulhilo for some other architecture.
+ - test with other compilers? (icpc seems to work)
+o misc
+ - a replay/decrement/rollback/backup method for counter_based_engines?
+ - Jamfiles and other build infrastructure
+ - really demonstrate thread-invariance in the example code (maybe C++11 std::thread)?
