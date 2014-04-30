@@ -70,8 +70,6 @@ $(Binaries) : % : %.o
 $(Binaries:%=%.o): $(HDRS)
 $(Binaries:%=%.s): $(HDRS)
 
-$(filter test_%,$(Binaries:%=%.o)): override CPPFLAGS+=-DBOOST_TEST_DYN_LINK
-
 .PHONY: test-env
 test-env:
 	@echo LDFLAGS: $(LDFLAGS) 

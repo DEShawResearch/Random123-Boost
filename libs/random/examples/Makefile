@@ -63,14 +63,15 @@ endif
 
 HDRS:=../../../boost/random/*.hpp ../../../boost/random/detail/*.hpp Makefile
 
-Binaries:=counter_based_example
+Binaries:=counter_based_example threaded_counter_based_example philox_hash_value
 
 All: $(Binaries)
 $(Binaries) : % : %.o
 $(Binaries:%=%.o): $(HDRS)
 $(Binaries:%=%.s): $(HDRS)
 
-$(filter test_%,$(Binaries:%=%.o)): override CPPFLAGS+=-DBOOST_TEST_DYN_LINK
+threaded_counter_based_example : override LDLIBS+=-lboost_thread -lboost_system
+
 
 .PHONY: test-env
 test-env:
