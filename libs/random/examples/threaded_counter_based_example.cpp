@@ -50,9 +50,9 @@ void assignmasses(std::vector<atom>& atoms, float m1, float m2, const Prf& prf){
 // thermalize - assign the velocities, randomly chosen from a Boltzmann distribution.
 //  start, stride and Natoms tell us which elements of the atoms[] array
 //  this thread should update.
-void thermalize(atom* atoms, uint32_t timestep, const Prf& prf, size_t start, size_t stride, size_t Natoms){
+void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf& prf){
     normal_distribution<float> nd;
-    for(size_t i=start; i<Natoms; i+=stride){
+    for(size_t i=0; i<Natoms; ++i){
         float rmsvelocity = sqrt(kT/atoms[i].mass);
         Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
         counter_based_urng<Prf> cbrng(prf, d);
@@ -63,13 +63,18 @@ void thermalize(atom* atoms, uint32_t timestep, const Prf& prf, size_t start, si
     }
 }
 
-// mt_thermalize - call thermalize in Nthr threads.
-void thermalize_mt(size_t Nthr, std::vector<atom>& atoms, uint32_t timestep, const Prf& prf){
-    // Our threading strategy isn't particularly smart, but it is illustrative:
-    //  thread i updates atoms[i], atoms[i+Nthr], atoms[i+2*Nthr], ...
+// mt_thermalize - launch Nthr threads calling thermalize in each.
+void mt_thermalize(size_t Nthr, std::vector<atom>& atoms, uint32_t timestep, const Prf& prf){
+    // Assign atoms to threads in blocks:
+    //  thread i updates a block starting at i* (Natoms/Nthr) (rounded appopriately).
     boost::thread_group threads;
+    size_t atoms_left = atoms.size();
+    atom *start = &atoms[0];
     for(size_t t=0; t<Nthr; ++t){
-        threads.add_thread(new boost::thread(thermalize, &atoms[0], timestep, prf, t, Nthr, atoms.size()));
+        size_t atoms_per_thread = atoms_left/(Nthr - t);
+        threads.add_thread(new boost::thread(thermalize, start, atoms_per_thread, timestep, prf));
+        atoms_left -= atoms_per_thread;
+        start += atoms_per_thread;
     }
     threads.join_all();
 }
@@ -93,7 +98,7 @@ int main(int argc, char **argv){
     // Pick random masses uniformly between Hydrogen (1amu) and Oxygen (16amu).
     assignmasses(atoms, 1.*amu, 16.*amu, prf);
     // Now thermalize the velocities according to the Boltzmann distribution.
-    thermalize_mt(nthread, atoms, timestep, prf);
+    mt_thermalize(nthread, atoms, timestep, prf);
 
     std::cout << "id mass vx vy vz thermalized at timestep=" << timestep << "\n";
     for(size_t i=0; i<atoms.size(); ++i){
@@ -102,7 +107,7 @@ int main(int argc, char **argv){
 
     // Now advance the timestep and rethermalize.  Show the new velocities
     timestep++;
-    thermalize_mt(nthread, atoms, timestep, prf);
+    mt_thermalize(nthread, atoms, timestep, prf);
     std::cout << "id mass vx vy vz thermalized at timestep=" << timestep << "\n";
     for(size_t i=0; i<atoms.size(); ++i){
         std::cout << i << " " << atoms[i].mass << " " << atoms[i].vx << " " << atoms[i].vy << " " << atoms[i].vz << "\n";
