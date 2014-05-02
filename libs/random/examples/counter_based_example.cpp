@@ -50,8 +50,14 @@ void thermalize(std::vector<atom>& atoms, uint32_t timestep, const Prf& prf){
     normal_distribution<float> nd;
     for(size_t i=0; i<atoms.size(); ++i){
         float rmsvelocity = sqrt(kT/atoms[i].mass);
+#if __cplusplus >= 201103L
+        // with C++11 we can use an initializer list.
+        counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
+#else
+        // otherwise, we have to declare a domain_type.
         Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
         counter_based_urng<Prf> cbrng(prf, d);
+#endif
         nd.reset();
         atoms[i].vx = rmsvelocity*nd(cbrng);
         atoms[i].vy = rmsvelocity*nd(cbrng);

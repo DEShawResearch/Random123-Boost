@@ -50,7 +50,8 @@ else # g++
 
 OPTIMIZE= -O3 -ggdb3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
-CXXFLAGS+=$(COMMONFLAGS) -std=c++98
+#CXXFLAGS+=$(COMMONFLAGS) -std=c++98
+CXXFLAGS+=$(COMMONFLAGS) -std=c++11
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
 
 endif
@@ -71,7 +72,6 @@ $(Binaries:%=%.o): $(HDRS)
 $(Binaries:%=%.s): $(HDRS)
 
 threaded_counter_based_example : override LDLIBS+=-lboost_thread -lboost_system
-
 
 .PHONY: test-env
 test-env:

@@ -147,14 +147,26 @@ protected:
         next = rdata.begin() + n;
     }        
 
-    BOOST_RANDOM_DETAIL_CONSTEXPR static dvalue_type delta(){
-        typedef typename boost::make_unsigned<dvalue_type>::type unsigned_type;
-        unsigned_type dmaxmin = boost::random::detail::subtract<dvalue_type>()(prf_type::domain_array_max(), prf_type::domain_array_min());
-        int domain_bits = (dmaxmin == (std::numeric_limits<unsigned_type>::max)()) ?
+    // N.B. in C++03 or C++14 dmaxmin, domain_bits and ctr_bits would be
+    // temporaries inside delta().  But in C++11 we're not allowed to
+    // declare temporaries in a constexpr function.
+    typedef typename boost::make_unsigned<dvalue_type>::type unsigned_type;
+    BOOST_RANDOM_DETAIL_CONSTEXPR static unsigned_type dmaxmin(){
+        return boost::random::detail::subtract<dvalue_type>()(prf_type::domain_array_max(), prf_type::domain_array_min());
+    }
+
+    BOOST_RANDOM_DETAIL_CONSTEXPR static int domain_bits(){
+        return (dmaxmin() == (std::numeric_limits<unsigned_type>::max)()) ?
             std::numeric_limits<unsigned_type>::digits :
-            detail::integer_log2(dmaxmin + 1);
-        int ctr_bits = (std::min)(32, domain_bits);
-        return static_cast<dvalue_type>(1)<<(domain_bits - ctr_bits);
+            detail::integer_log2(dmaxmin() + 1);
+    }
+
+    BOOST_RANDOM_DETAIL_CONSTEXPR static int ctr_bits(){
+        return (std::min)(32, domain_bits());
+    }
+
+    BOOST_RANDOM_DETAIL_CONSTEXPR static dvalue_type delta(){
+        return static_cast<dvalue_type>(1)<<(domain_bits() - std::min(32, domain_bits()));
     }
 
     void chkhighbits(){
