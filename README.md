@@ -140,13 +140,13 @@ and philox.  Both are templated over an unsigned width, an unsigned
 integer value type, and a round-count (which takes a reasonable and safe
 default value).  For example:
 
-   threefry<4, uint32_t>
-   philox<2, uint64_t>
+     threefry<4, uint32_t>
+     philox<2, uint64_t>
 
 All PRFs have a key_type, a domain_type, and a range_type, all
 of which are boost::arrays of the underlying value type.  I.e.,
 
-   threefry<N, U>::key_type    = boost::array<U, N>
+     threefry<N, U>::key_type    = boost::array<U, N>
                    domain_type = boost::array<U, N>
                    range_type  = boost::array<U, N>
 
@@ -190,7 +190,7 @@ fairly "short" sequence lengths (anything from 4 up to 2^64).  This is
 usually more than sufficient to provide input to one or more
 Distributions, which generally call their engine a non-deterministic,
 but usually small number of times.  On the other hand, it is cheap and
-efficient to create huge numbers (2^64 or more) of independent
+efficient to create huge numbers (up to 2^255) of independent
 counter_based_urngs on demand.
 
 
