@@ -79,18 +79,15 @@ protected:
     prf_type b;
     domain_type c;
     range_type v;
-    typename range_type::const_iterator next;
+    unsigned next;
 
-    void setnext(size_t n){
-        size_t nelem = v.size();
-        if( n != nelem ){
+    void setnext(unsigned n){
+        if( n != Prf::Nrange ){
             v = b(c);
         }
-        next = v.begin() + n;
+        next = n;
     }        
 
-    size_t nth() const { return next - v.begin(); }
-        
     void incr(){
         typename domain_type::reverse_iterator p = c.rbegin();
         for(unsigned w=0; w<FullCtrWords; ++w){
@@ -123,7 +120,7 @@ protected:
 
     void initialize(){
         c.fill(0);
-        next = v.end();
+        next = Prf::Nrange;
     }
 
     void chk_highbasebits(domain_type c){
@@ -193,26 +190,26 @@ public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return std::numeric_limits<dvalue_type>::max(); }
 
     counter_based_engine()
-        : b()
+        : b(), c(), v(), next(Prf::Nrange)
     {
         initialize();
         //std::cerr << "cbe()\n";
     }
 
-    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c){
+    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Prf::Nrange){
         //std::cerr << "cbe(counter_based_engine&)\n";
-        setnext(e.nth());
+        setnext(e.next);
     }
 
-    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c){
+    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Prf::Nrange){
         //std::cerr << "cbe(const counter_based_engine&)\n";
-        setnext(e.nth());
+        setnext(e.next);
     }
 
     counter_based_engine& operator=(const counter_based_engine& rhs){
         b = rhs.b;
         c = rhs.c;
-        setnext(rhs.nth());
+        setnext(rhs.next);
         return *this;
     }
 
@@ -265,14 +262,14 @@ public:
 
     BOOST_RANDOM_DETAIL_EQUALITY_OPERATOR(counter_based_engine, lhs, rhs){ 
         return lhs.c==rhs.c && 
-            lhs.nth() == rhs.nth() && 
+            lhs.next == rhs.next && 
             lhs.b == rhs.b; 
     }
 
     BOOST_RANDOM_DETAIL_INEQUALITY_OPERATOR(counter_based_engine)
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, counter_based_engine, f){
-        os << (f.nth()) << ' ';
+        os << (f.next) << ' ';
         for(typename domain_type::const_iterator p=f.c.begin(); p!=f.c.end(); ++p)
             os << ' ' << *p;
         os << f.b;
@@ -290,24 +287,23 @@ public:
     }
 
     result_type operator()(){
-        if( next == v.end() ){
+        if( next == Prf::Nrange ){
             incr();
             v = b(c);
-            next = v.begin();
+            next = 0;
         }
-        return *next++;
+        return v[next++];
     }
 
     void discard(boost::uintmax_t skip){
-        size_t nelem = v.size();
-	size_t newnth = nth() + (skip % nelem);
-        skip /= nelem;
-        if (newnth > nelem) {
-            newnth -= nelem;
+	size_t newnext = next + (skip % Prf::Nrange);
+        skip /= Prf::Nrange;
+        if (newnext > Prf::Nrange) {
+            newnext -= Prf::Nrange;
 	    skip++;
         }
         incr(skip);
-        setnext(newnth);
+        setnext(newnext);
     }
          
     template <class Iter>
@@ -327,7 +323,7 @@ public:
     void restart(domain_type start){ 
         chk_highbasebits(start);
         c = start;
-        next = v.end();
+        next = Prf::Nrange;
     }
 
     // Constructor and seed() method to create or re-seed a
@@ -335,7 +331,7 @@ public:
     // It's an error to specify a key with high bits set because the
     // high bits are reserved for use by the engine to disambiguate
     // engines created with different CounterBits.
-    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(sethighkeybits(k)), c(base), next(v.end()){
+    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(set_highkeybits(k)), c(base), next(Prf::Nrange){
         chk_highbasebits(base);
     }
 
