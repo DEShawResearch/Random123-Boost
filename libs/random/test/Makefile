@@ -73,7 +73,7 @@ $(Binaries:%=%.s): $(HDRS)
 
 $(filter test_%,$(Binaries:%=%.o)): override CPPFLAGS+=-DBOOST_TEST_DYN_LINK
 
-test_philox2x64.o : override COMMONFLAGS+=  -Wno-sequence-point -fno-strict-aliasing
+test_philox2x64.o : override COMMONFLAGS+=  -Wno-sequence-point -Wno-strict-aliasing
 
 .PHONY: test-env
 test-env:

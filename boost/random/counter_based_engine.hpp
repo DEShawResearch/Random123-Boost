@@ -138,7 +138,7 @@ protected:
     //   argument.  These functions make no effort to check or set the
     //   high bits of the key.  They should be passed through either
     //   chk_highkeybits or set_highkeybits before being passed on to
-    //   a Prf constructor or setkey
+    //   a Prf constructor or Prf::setkey
     key_type key_from_value(kvalue_type v){
         key_type ret = {{v}};
         return ret;
@@ -161,6 +161,18 @@ protected:
         detail::fill_array_int<kvalue_bits>(first, last, ret.elems);
         return ret;
     }
+
+    // We avoid collisions between engines with different CtrBits by
+    // embedding the value CtrBits-1 in the high few bits of the last
+    // element of Prf's key.  If we didn't do this, it would be too
+    // easy for counter_based_engine<Prf, N> and
+    // counter_based_engine<Prf, M> to "collide", producing
+    // overlapping streams.
+    //
+    // When we accept a key from the user, e.g., seed(arithmetic) or
+    // seed(key_type), it is an error if the specified value has any
+    // high bits set.  On the other hand, it's not an error if
+    // seed_seq.generate() sets those bits -- we just ignore them.
 
     // chk_highkeybits - first check that the high CtrBitsBits of k
     //  are 0.  If they're not, throw an out_of_range exception.  If
@@ -326,12 +338,12 @@ public:
         next = Prf::Nrange;
     }
 
-    // Constructor and seed() method to create or re-seed a
+    // Constructor and seed() method to construct or re-seed a
     // counter_based_engine from a key and an optional base counter.
     // It's an error to specify a key with high bits set because the
     // high bits are reserved for use by the engine to disambiguate
     // engines created with different CounterBits.
-    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(set_highkeybits(k)), c(base), next(Prf::Nrange){
+    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(chk_highkeybits(k)), c(base), next(Prf::Nrange){
         chk_highbasebits(base);
     }
 
