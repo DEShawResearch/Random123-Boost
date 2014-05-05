@@ -60,7 +60,7 @@ struct IdentityPrf{
     typedef boost::array<UINT, 1> key_type;
     typedef UINT dvalue_type;
     typedef UINT rvalue_type;
-    IdentityPrf(key_type&){}
+    IdentityPrf(key_type){}
     IdentityPrf(UINT){}
 
     range_type operator()(domain_type c){ return c; }
@@ -99,7 +99,10 @@ void run(int iter, const std::string & name, RNG rng)
 template <typename Prf>
 void  __attribute__((noinline)) run_cbeng(const std::string& name, int iter){
     std::string pfx= "counter_based_engine<" + name + ">";
-    run(iter, pfx, boost::random::counter_based_engine<Prf>(iter));
+    // N.B.  Use 24 bits of iter as the key.  Not really necessary, but
+    // it prevents the compiler from possibly performing some of the key
+    // arithmetic at compile-time.
+    run(iter, pfx, boost::random::counter_based_engine<Prf, 64>(iter&0xffffff));
 }
 
 void do_threefry(int iter){

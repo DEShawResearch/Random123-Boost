@@ -34,19 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/random/detail/operators.hpp>
 #include <boost/random/detail/seed.hpp>
-#include <boost/random/seed_seq.hpp>
-#include <boost/random/detail/seed_impl.hpp>
-#include <boost/random/detail/integer_log2.hpp> // for BOOST_RANDOM_DETAIL_CONSTEXPR
-
-#undef BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR
-#define BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(Self, SeedSeq, seq)    \
-    template<class SeedSeq>                                             \
-    explicit Self(SeedSeq& seq, typename ::boost::random::detail::disable_seed<SeedSeq>::type* = 0)
-
-#undef BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR
-#define BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR(Self, SeedSeq, seq)    \
-    template<class SeedSeq>                                             \
-    explicit Self(const SeedSeq& seq, typename ::boost::random::detail::disable_seed<SeedSeq>::type* = 0)
 
 namespace boost{
 namespace random{
@@ -75,49 +62,6 @@ struct prf_common{
     }
     prf_common(const prf_common& v) : k(v.k) {
         //std::cerr << "prf_common(const prf_common&)\n";
-    }
-
-    BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(prf_common, SeedSeq, seq){
-        //std::cerr << "prf_common(SeedSeq&)\n";
-        seed(seq);
-    }
-
-    BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR(prf_common, SeedSeq, seq){
-        //std::cerr << "prf_common(const SeedSeq&)\n";
-        seed(seq);
-    }
-
-    // Do we also need a const version?
-    BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(prf_common, SeedSeq, seq){
-        static const size_t w = std::numeric_limits<typename key_type::value_type>::digits;
-        typedef typename key_type::value_type array_type[Nkey]; 
-        boost::random::detail::seed_array_int<w>(seq, *reinterpret_cast<array_type*>(k.data()));
-    }
-
-    template <class It>
-    prf_common(It& first, It last){
-        //std::cerr << "prf_common(It&, It)\n";
-        seed(first, last);
-    }
-
-    prf_common(Uint v){
-        seed(v);
-    }
-
-    void seed(){
-        k = key_type();
-    }
-
-    void seed(Uint v){
-        key_type kk = {v};
-        k = kk;
-    }
-
-    template <class It>
-    void seed(It& first, It last){
-        static const size_t w = std::numeric_limits<typename key_type::value_type>::digits;
-        typedef typename key_type::value_type array_type[Nkey]; 
-        boost::random::detail::fill_array_int<w>(first, last, *reinterpret_cast<array_type*>(k.data()));
     }
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, prf_common, f){

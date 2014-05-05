@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/counter_based_engine.hpp>
 
-typedef boost::random::counter_based_engine<BOOST_PSEUDO_RANDOM_FUNCTION> engine_t;
+typedef boost::random::counter_based_engine<BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_COUNTER_BASED_ENGINE_CTRBITS> engine_t;
 
 #define BOOST_RANDOM_URNG engine_t
 
@@ -49,7 +49,17 @@ void do_test_huge_discard(boost::uintmax_t bigjump){
 
     BOOST_CHECK_EQUAL(urng, urng2);
     boost::uintmax_t n = 0;
-    urng2.discard(bigjump);
+    try{
+        urng2.discard(bigjump);
+    }catch(std::out_of_range&){
+        // It's ok if bigjump exceeds our sequence length.
+        // It just means that we are testing a counter_based_engine
+        // with a small-ish number of CounterBits.
+        //
+        // FIXME - check this with some arithmetic on bigjump and
+        // BOOST_COUNTER_BASED_ENGINE_CTRBITS
+        return;
+    }
     while(n < bigjump){
         BOOST_CHECK_NE(urng, urng2);
         boost::random::uniform_int_distribution<boost::uintmax_t> d(1, 1+(bigjump-n)/73);;

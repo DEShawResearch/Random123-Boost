@@ -49,9 +49,9 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 else # g++
 
-OPTIMIZE= -ggdb3 -O3
+OPTIMIZE= -ggdb3 -O0
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
-CXXFLAGS+=$(COMMONFLAGS) -std=c++98
+CXXFLAGS+=$(COMMONFLAGS) -std=c++11
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
 
 endif
@@ -73,7 +73,7 @@ $(Binaries:%=%.s): $(HDRS)
 
 $(filter test_%,$(Binaries:%=%.o)): override CPPFLAGS+=-DBOOST_TEST_DYN_LINK
 
-test_philox2x64.o : override COMMONFLAGS+= -Wno-strict-aliasing -Wno-sequence-point
+test_philox2x64.o : override COMMONFLAGS+=  -Wno-sequence-point -fno-strict-aliasing
 
 .PHONY: test-env
 test-env:

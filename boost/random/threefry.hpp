@@ -142,23 +142,8 @@ private:
 public:
     threefry() : common_type(){}
     threefry(_key_type _k) : common_type(_k){}
-
-    template<class It>  threefry(It& first, It last) 
-        : common_type(first, last)
-    {}
-
     threefry(threefry& v) : common_type(static_cast<common_type &>(v)) {}
     threefry(const threefry& v) : common_type(static_cast<const common_type &>(v)){}
-
-    threefry(Uint v) : common_type(v){}
-
-    BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(threefry, SeedSeq, seq): 
-        common_type(seq)
-    { }
-
-    BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR(threefry, SeedSeq, seq)
-        : common_type(seq)
-    { }
 
     _ctr_type operator()(_ctr_type c){ 
         Uint ks[3];
@@ -217,22 +202,8 @@ private:
 public:
     threefry() : common_type(){}
     threefry(_key_type _k) : common_type(_k){}
-
-    template<class It> 
-    threefry(It& first, It last) : common_type(first, last) {}
-
     threefry(threefry& v) : common_type(static_cast<common_type &>(v)) {}
     threefry(const threefry& v) : common_type(static_cast<const common_type &>(v)){}
-
-    threefry(Uint v) : common_type(v){}
-
-    BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(threefry, SeedSeq, seq)
-        : common_type(seq)
-    { }
-
-    BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR(threefry, SeedSeq, seq)
-        : common_type(seq)
-    { }
 
     _ctr_type operator()(_ctr_type c){ 
         Uint ks[5];
