@@ -143,7 +143,7 @@ protected:
     //   chk_highkeybits or set_highkeybits before being passed on to
     //   a Prf constructor or setkey
     key_type key_from_value(kvalue_type v){
-        key_type ret = {v};
+        key_type ret = {{v}};
         return ret;
     }
 
@@ -161,10 +161,7 @@ protected:
     template <typename It>
     key_type key_from_range(It& first, It last){
         key_type ret;
-        kvalue_type *pret0 = ret.data();
-        static const size_t w = std::numeric_limits<typename key_type::value_type>::digits;
-        typedef kvalue_type array_type[Prf::Nkey]; 
-        boost::random::detail::fill_array_int<w>(first, last, *reinterpret_cast<array_type*>(pret0));
+        detail::fill_array_int<kvalue_bits>(first, last, ret.elems);
         return ret;
     }
 
@@ -173,8 +170,8 @@ protected:
     //  they are, then replace them with CtrBits-1.
     key_type chk_highkeybits(key_type k){
         unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
-        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))<<(kvalue_bits - CtrBitsBits));
-        if( k[Prf::Nkey-1] & CtrBitsMask )
+        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
+        if( k[Prf::Nkey-1] & ~CtrBitsMask )
             throw std::out_of_range("high bits of key are reserved for internal use by counter_based_engine");
         return set_highkeybits(k);
     }
@@ -183,11 +180,11 @@ protected:
     //  regardless of their original contents.
     key_type set_highkeybits(key_type k){
         unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
-        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))<<(kvalue_bits - CtrBitsBits));
+        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>>CtrBitsBits);
         //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
         //BOOST_STATIC_ASSERT(CtrBitsBits <= 32); // for seed_seq
         k[Prf::Nkey-1] &= CtrBitsMask;
-        k[Prf::Nkey-1] |= (CtrBits-1)<<(kvalue_bits - CtrBitsBits);
+        k[Prf::Nkey-1] |= kvalue_type(CtrBits-1)<<(kvalue_bits - CtrBitsBits);
         return k;
     }
 

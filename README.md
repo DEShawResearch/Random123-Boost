@@ -74,17 +74,17 @@ worked example):
 Let's consider the code changes between the two fragments:
 
 - counter_based_engine is a templated adapter class.  Its template
-parameters is a Pseudo-Random Function (PRF) and the number of bits in
-its 'counter'.  It can be constructed from an instance of the
-Pseudo-Random Function.  E.g., this line in the example:
+parameters are a Pseudo-Random Function (PRF) and the number of bits in
+its 'counter'.
 
-        counter_based_engine<Prf, 32> cbeng(prf);
+    typedef threefry<4, uint32_t> Prf;
+    counter_based_engine<Prf, 32> cbeng(seed);
 
     This engine has "only" a 32-bit counter.  So it can only generate
 4*2^32 random values before it needs to be restarted (typically with a
 different 'base counter').  But we only use it to generate three
-normally distributed values, so there is little danger of running out
-of randomness.
+normally distributed values, so there is no danger of exhausting
+the counter.
 
     We restart the generator with a new base counter every time
 through the loop.  In this example, the 'domain_type' of the
@@ -106,24 +106,15 @@ restart the engine:
 that differ in only a single bit, will generate independent,
 non-overlapping sequences of random values.  Thus, by choosing a value
 in the domain that encodes some program-specific state (e.g.,
-atoms[i].id and timestep), we produce a unique stream (of length 2^32,
-of which we use about 6) for each atom at each timestep that is
-statistically independent of all other streams.  Notice that the
-random values generated for a particular atom at a particular timestep
-are independent of the number of threads or the assignment of atoms to
-threads.  The additional constant THERMALIZE_CTXT is used to
-distinguish this loop from any other loop or context in the program,
-eliminating the possibility that the same sequence will be generated
-elsewhere in the program.
+atoms[i].id and timestep), we produce a unique stream for each atom at
+each timestep that is statistically independent of all other streams.
+Notice that the random values generated for a particular atom at a
+particular timestep are independent of the number of threads or the
+assignment of atoms to threads.  The additional constant
+THERMALIZE_CTXT is used to distinguish this loop from any other loop
+or context in the program, eliminating the possibility that the same
+sequence will be generated elsewhere in the program.
 
-- PRFs are keyed.  Two Prfs of the same type, initialized with the
-same key are indistinguishable and two Prfs initialized with different
-keys, even if they differ in only a single bit will give rise to
-statistically independent sequences (even if they are restarted with
-the same base counter).  The counter_based_engine's constructor's seed
-argument is used to 'key' its Prf.  E.g.,
-
-        counter_based_engine<Prf, 32> cbeng(seed);
 
 
 Pseudo-random functions:  Philox and Threefry
@@ -166,14 +157,21 @@ statistically independent, even if the keys differ by only a single
 bit or follow regular patterns.  Among other things, threefry and
 philox pass the entire BigCrush suite of tests.
 
+PRFs are keyed.  Two Prfs of the same type, initialized with the
+same key are indistinguishable and two Prfs initialized with different
+keys, even if they differ in only a single bit will give rise to
+statistically independent sequences (even if they are restarted with
+the same base counter).  The counter_based_engine maps 'seeds'
+to Prf keys.
+
 counter_based_engine
 --------------------
 
 The counter_based_engine class uses the pseudo-random property of PRFs
-to perform random number generation in accordance with the
-requirements of a UniformRandomNumberGenerator.  It reserves
-'CounterBits' of most-significant bits of the highest-index members of
-the domain_type array for its own internal use as a "counter".
+to generate random values meeting the requirements of a
+UniformRandomNumberGenerator.  It reserves 'CounterBits' of
+most-significant bits of the highest-index members of the domain_type
+array for its own internal use as a "counter".
 
 Whenever new random values are required, the counter bits are
 incremented and the PRF is called, generating a new set of random
@@ -188,32 +186,27 @@ programmer to use as a 'base counter', which can be set via the
 restart(Prf::domain_type) member function, via an overloaded
 constructor, or via an overloaded seed() member function.  The base
 counter allows the program to manage practially unlimited numbers (up
-to 2^(256-CounterBits)) of reasonable-length (up to 2^CounterBits)
-random sequences.  By logically associating independent random
-seqences with distinct program elements (c.f., atom.id+thread, in the
-example above), it's possible to write parallel programs whose
-output is independent of thread scheduling or work assignment.
+to 2^(256-CounterBits)) random sequences up to 2^CounterBits in
+length.  By logically associating independent random seqences with
+distinct program elements (c.f., atom.id+thread, in the example
+above), it's possible to write parallel programs whose output is
+independent of thread scheduling or work assignment.
 
 'Seeding' a counter_based_engine corresponds to 'keying' its
 underlying Prf.  But note that they key space is typically much larger
 than a single value of the engine's output_type.  So,
 counter_based_engine has additional constructors that allow it to be
-constructed from an existing Prf, or from a value of the Prf's
-key_type (which is then used to initialize the underlying Prf).  I.e.,
+constructed or seeded from a value of the Prf's key_type.  I.e.,
 
-    counter_based_engine(const& Prf);
     counter_based_engine(Prf::key_type);
 
 It is also possible to set the base_count at construction time:
 
-    counter_based_engine(const& Prf, Prf::domain_type);
     counter_based_engine(Prf::key_type, Prf::domain_type);
   
-And finally, there are corresponding overloads of seed():
+And of course, there are corresponding overloads of seed():
 
-    seed(const& Prf);
     seed(Prf::key_type);
-    seed(const& Prf, Prf::domain_type);
     seed(Prf::key_type, Prf::domain_type);
 
 Some performance-related features make counter_based_engines
@@ -231,8 +224,8 @@ instructions operating on a handful of temporary registers.
 - restart() is little more than a fixed number of integer assignments.
 It is very fast and highly amenable to optimization.
 
-- discard() is also very fast and runs in constant time.
-Parallel programs can use this to "leapfrog" multiple sequences over
-one another in different threads, or it can be used to initialize
+- discard() is also very fast and runs in constant time.  Parallel
+programs can use this to "leapfrog" multiple sequences over one
+another in different threads, or it can be used to initialize
 generators in different threads with starting points that are
 separated by enough to avoid overlap.
