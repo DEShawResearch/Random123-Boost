@@ -52,17 +52,14 @@ namespace boost{
 namespace random{
 namespace detail{
 
-template <unsigned Ndomain, unsigned Nrange, unsigned Nkey, typename Uint>
+template <unsigned Ndomain_, unsigned Nrange_, unsigned Nkey_, typename Uint>
 struct prf_common{
+    static const unsigned Ndomain = Ndomain_;
+    static const unsigned Nrange = Nrange_;
+    static const unsigned Nkey = Nkey_;
     typedef array<Uint, Ndomain> domain_type;
     typedef array<Uint, Nrange> range_type;
     typedef array<Uint, Nkey> key_type ;
-    BOOST_RANDOM_DETAIL_CONSTEXPR static typename domain_type::value_type domain_array_min()  { return std::numeric_limits<typename domain_type::value_type>::min(); }
-    BOOST_RANDOM_DETAIL_CONSTEXPR static typename domain_type::value_type domain_array_max()  { return std::numeric_limits<typename domain_type::value_type>::max(); }
-
-    BOOST_RANDOM_DETAIL_CONSTEXPR static typename range_type::value_type range_array_min()  { return std::numeric_limits<typename range_type::value_type>::min(); }
-    BOOST_RANDOM_DETAIL_CONSTEXPR static typename range_type::value_type range_array_max()  { return std::numeric_limits<typename range_type::value_type>::max(); }
-
 
     key_type k;
     prf_common(key_type _k) : k(_k){
@@ -93,11 +90,8 @@ struct prf_common{
     // Do we also need a const version?
     BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(prf_common, SeedSeq, seq){
         static const size_t w = std::numeric_limits<typename key_type::value_type>::digits;
-        // TODO - do this in-place, without a separate uarray.  Or will the compiler figure
-        // it out without the code jumping through more hoops?
-        typename key_type::value_type uarray[Nkey];
-        boost::random::detail::seed_array_int<w>(seq, uarray);
-        std::copy(&uarray[0], &uarray[Nkey], k.begin());
+        typedef typename key_type::value_type array_type[Nkey]; 
+        boost::random::detail::seed_array_int<w>(seq, *reinterpret_cast<array_type*>(k.data()));
     }
 
     template <class It>
@@ -106,19 +100,24 @@ struct prf_common{
         seed(first, last);
     }
 
+    prf_common(Uint v){
+        seed(v);
+    }
+
     void seed(){
         k = key_type();
-        //typename key_type::kvalue_type zero = typename key_type::value_type();
-        //boost::random::seed_seq ss(&zero, &zero+1);
-        //seed(ss);
+    }
+
+    void seed(Uint v){
+        key_type kk = {v};
+        k = kk;
     }
 
     template <class It>
     void seed(It& first, It last){
         static const size_t w = std::numeric_limits<typename key_type::value_type>::digits;
-        typename key_type::value_type uarray[Nkey];
-        boost::random::detail::fill_array_int<w>(first, last, uarray);
-        std::copy(&uarray[0], &uarray[Nkey], k.begin());
+        typedef typename key_type::value_type array_type[Nkey]; 
+        boost::random::detail::fill_array_int<w>(first, last, *reinterpret_cast<array_type*>(k.data()));
     }
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, prf_common, f){

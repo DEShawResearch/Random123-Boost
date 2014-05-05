@@ -17,7 +17,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/random/threefry.hpp>
 #include <boost/random/philox.hpp>
-#include <boost/random/counter_based_urng.hpp>
 #include <boost/random/counter_based_engine.hpp>
 
 /*
@@ -34,7 +33,7 @@
 // #define HAVE_MT19937AR_C
 
 // set to your CPU frequency
-static const double cpu_frequency = 1.87 * 1e9;
+static const double cpu_frequency = 3.07 * 1e9;
 
 /*
  * End of Configuration Section
@@ -160,11 +159,13 @@ template<class RNG>
 void timing(RNG rng, int iter, const std::string& name)
 {
   // make sure we're not optimizing too much
-  volatile typename RNG::result_type tmp;
+  typename RNG::result_type tmp = 0;
   boost::timer t;
   for(int i = 0; i < iter; i++)
-    tmp = rng();
+    tmp += rng();
   show_elapsed(t.elapsed(), iter, name);
+  if( tmp == 0 )
+      std::cout << "tmp == 0. That's a surprise\n";
 }
 
 template<class RNG>
@@ -186,11 +187,13 @@ void run(int iter, const std::string & name, RNG rng)
   // BCC has trouble with string autoconversion for explicit specializations
   
   // make sure we're not optimizing too much
-  volatile typename RNG::result_type tmp;
+  typename RNG::result_type tmp = 0;
   boost::timer t;
   for(int i = 0; i < iter; i++)
-    tmp = rng();
+    tmp += rng();
   show_elapsed(t.elapsed(), iter, name);
+  if( tmp == 0 )
+      std::cout << "tmp == 0. That's a surprise\n";
 }
 
 #ifdef HAVE_DRAND48
@@ -248,6 +251,7 @@ void distrib(int iter, const std::string & name, const Gen &)
 {
   Gen gen;
 
+#if 0
   timing(make_gen(gen, boost::random::uniform_int_distribution<>(-2, 4)),
          iter, name + " uniform_int");
 
@@ -272,10 +276,12 @@ void distrib(int iter, const std::string & name, const Gen &)
 
   timing(make_gen(gen, boost::random::uniform_real_distribution<>(-5.3, 4.8)),
          iter, name + " uniform_real");
+#endif
 
   timing(make_gen(gen, boost::random::uniform_01<>()),
          iter, name + " uniform_01");
 
+#if 0
   timing(make_gen(gen, boost::random::triangle_distribution<>(1, 2, 7)),
          iter, name + " triangle");
 
@@ -311,12 +317,7 @@ void distrib(int iter, const std::string & name, const Gen &)
 
   timing_sphere(make_gen(gen, boost::random::uniform_on_sphere<>(3)),
                 iter/10, name + " uniform_on_sphere");
-}
-
-template <typename Prf>
-void run_cburng(const std::string& name, int iter){
-    std::string pfx= "counter_based_urng<" + name + ">";
-    run(iter, pfx, boost::random::counter_based_urng<Prf>(Prf(), typename Prf::domain_type()));
+#endif
 }
 
 int main(int argc, char*argv[])
@@ -386,6 +387,16 @@ int main(int argc, char*argv[])
   run(iter, "ranlux24", boost::ranlux3());
   run(iter, "ranlux48", boost::ranlux4());
 
+  run(iter, "threefry4x64", boost::random::counter_based_engine< boost::random::threefry<4, uint64_t> >());
+  run(iter, "threefry2x64", boost::random::counter_based_engine< boost::random::threefry<2, uint64_t> >());
+  run(iter, "threefry4x32", boost::random::counter_based_engine< boost::random::threefry<4, uint32_t> >());
+  run(iter, "threefry2x32", boost::random::counter_based_engine< boost::random::threefry<2, uint32_t> >());
+
+  run(iter, "philox4x64", boost::random::counter_based_engine< boost::random::philox<4, uint64_t> >());
+  run(iter, "philox2x64", boost::random::counter_based_engine< boost::random::philox<2, uint64_t> >());
+  run(iter, "philox4x32", boost::random::counter_based_engine< boost::random::philox<4, uint32_t> >());
+  run(iter, "philox2x32", boost::random::counter_based_engine< boost::random::philox<2, uint32_t> >());
+
   run(iter, "counting", counting());
 
 #ifdef HAVE_MT19937INT_C
@@ -396,9 +407,6 @@ int main(int argc, char*argv[])
 #ifdef HAVE_MT19937AR_C
   run(iter, "mt19937ar.c", mt19937_c());
 #endif
-
-  run_cburng<boost::random::threefry<2,uint64_t> >("threefry2x64", iter);
-  run_cburng<boost::random::philox<2,uint64_t> >("philox2x64", iter);
 
   distrib(iter, "counting", counting());
 
@@ -412,4 +420,7 @@ int main(int argc, char*argv[])
 
   distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t> >());
   distrib(iter, "philox4x64", boost::random::counter_based_engine<boost::random::philox<4, uint64_t> >());
+
+  distrib(iter, "threefry4x32-12", boost::random::counter_based_engine<boost::random::threefry<4, uint32_t, 12> >());
+  distrib(iter, "philox2x32-7", boost::random::counter_based_engine<boost::random::philox<2, uint32_t, 7> >());
 }

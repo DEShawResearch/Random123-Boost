@@ -4,8 +4,8 @@ Random123-Boost
 Proposed Random123 functions for Boost.Random
 
 The purpose of this source tree is to develop a new family of
-"Counter Based Uniform Random Number Generators" (CBURNGs) for the
-Boost.Random library.  CBURNGs were introduced in the paper, "Parallel
+"Counter Based Uniform Random Number Engines" (CBENGs) for the
+Boost.Random library.  CBENGs were introduced in the paper, "Parallel
 Random Numbers -- As Easy as 1, 2, 3", by Salmon, Moraes, Dror & Shaw,
 which won the Best Paper award at the SC'11  conference:
 
@@ -20,22 +20,21 @@ common practice is to serialize access through a single global
 generator, or, in a parallel program, to instantiate one generator
 per-thread.
 
-Unlike conventional generators CBURNGs require very little storage and
-are designed to be created and destroyed frequently.  If created and
-destroyed in an "inner loop", a good compiler can often keep their
-state entirely in registers and can generate random values with a few
-dozen inlined instructions.  In addition, they have extremely fast,
-constant-time implementations of 'discard()', which allows callers to
-easily "leapfrog" through a logical stream of random numbers.
-These features make them ideal for parallel computation. 
+Unlike conventional engines CBENGs require very little storage and are
+designed to be created, destroyed and restarted frequently.  If
+created and destroyed in an "inner loop", a good compiler can often
+keep their state entirely in registers and can generate random values
+with a few dozen inlined instructions.  In addition, they have
+extremely fast, constant-time implementations of 'discard()', which
+allows callers to easily "leapfrog" through a logical stream of random
+numbers.  These features make them ideal for parallel computation.
 
 Consider the following program fragment, using a conventional
 RandomNumberEngine, mt19937:
 
-    using namespace boost::random;
     mt_19937 rng(seed); // seed may come from the command line
     normal_distribution nd;
-    for(size_t i=0; i<atoms.size(); ++i){
+    for(size_t i=0; i<Natoms; ++i){
         float boltzmannfactor = sqrt(kT/atoms[i].mass);
         atoms[i].vx = boltzmannfactor*nd(rng);
         atoms[i].vy = boltzmannfactor*nd(rng);
@@ -56,80 +55,75 @@ if the overall program structure (i.e., not just this loop) dictates a
 parallelization strategy that might assign the same atom to multiple
 threads.
 
-CBRNGs overcome all these problems.  With CBRNGs, the code looks like
+CBENGs overcome all these problems.  With CBENGs, the code looks like
 this (see libs/random/examples/counter_based_example.cpp for a fully
 worked example):
 
-    using namespace boost::random;
     typedef threefry<4, uint32_t> Prf;
-    normal_distribution nd;
-    Prf::key_type key = {seed};
-    Prf prf(key);  // seed may come from command line
-    for(size_t i=0; i<atoms.size(); ++i){
+    counter_based_engine<Prf, 32> cbeng(seed);
+    for(size_t i=0; i<Natoms; ++i){
         float boltzmannfactor = sqrt(kT/atoms[i].mass);
-        Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
-        counter_based_urng<Prf> cbrng(prf, d);
-        nd.reset();
-        atoms[i].vx = boltzmannfactor*nd(cbrng);
-        atoms[i].vy = boltzmannfactor*nd(cbrng);
-        atoms[i].vz = boltzmannfactor*nd(cbrng);
+        normal_distribution nd(0., rmsvelocity);
+        Prf::domain_type base = {atoms[i].id, timestep, THERMALIZE_CTXT};
+        cbeng.restart(base);
+        atoms[i].vx = boltzmannfactor*nd(cbeng);
+        atoms[i].vy = boltzmannfactor*nd(cbeng);
+        atoms[i].vz = boltzmannfactor*nd(cbeng);
     }
 
 Let's consider the code changes between the two fragments:
 
-- counter_based_urng is a templated adapter class that models a bona
-fide Boost UniformRandomNumberGenerator.  Its template parameter is a
-Pseudo-Random Function (PRF).  An instance of the Pseudo-Random
-Function and a value from the Pseudo-Random Function's domain are
-required to construct a counter_based_urng.  E.g., these lines in the
-example:
+- counter_based_engine is a templated adapter class.  Its template
+parameters is a Pseudo-Random Function (PRF) and the number of bits in
+its 'counter'.  It can be constructed from an instance of the
+Pseudo-Random Function.  E.g., this line in the example:
 
-        Prf::domain_type d = {atoms[i].id, timestep, THERMALIZE_CTXT};
-        counter_based_urng<Prf> cbrng(prf, d);
+        counter_based_engine<Prf, 32> cbeng(prf);
+
+    This engine has "only" a 32-bit counter.  So it can only generate
+4*2^32 random values before it needs to be restarted (typically with a
+different 'base counter').  But we only use it to generate three
+normally distributed values, so there is little danger of running out
+of randomness.
+
+    We restart the generator with a new base counter every time
+through the loop.  In this example, the 'domain_type' of the
+threefry<4, uint32_t> pseudo-random function is (as the template
+arguments suggest) 128 bits wide.  We've allocated 32 "Counter Bits"
+via the seconed template argument to counter_based_engine.  That
+leaves us with 96 bits to be managed as a 'base counter'.  We choose a
+distinct base counter every time through the loop, and use it to
+restart the engine:
+
+         Prf::domain_type base = {atoms[i].id, timestep, THERMALIZE_CTXT};
+         cbeng.restart(base);
 
     In C++11, with initializer-lists, this might be shortened to:
 
-         counter_based_urng<Prf> cbrng(prf, {atoms[i].id, timestep, THERMALIZE_CTXT});
+         cbeng.restart({atoms[i].id, timestep, THERMALIZE_CTXT});
 
-    Creation and destruction of the counter_based_urng is much faster than
-    actually generating random values or processing them through a
-    distribution, so it's reasonable to create and destroy the cbrng every
-    time through the loop.
-    
-    Counter_based_urngs constructed from the same domain value and the
-    same PRF are identical, i.e., they will generate exactly the same
-    sequence.  On the other hand, counter_based_urngs constructed from
-    domain values that differ in even a single bit generate independent,
-    non-overlapping sequences of random values.  Thus, by choosing a value
-    in the domain that encodes some program-specific state (e.g.,
-    atoms[i].id and timestep), we produce a unique
-    stream for each atom at each timestep that is statistically
-    independent of all other streams.  Notice that the random values
-    generated for a particular atom at a particular timestep are
-    independent of the number of threads or the assignment of atoms to
-    threads.  The additional constant THERMALIZE_CTXT is used to
-    distinguish this loop from any other loop or context in the program,
-    eliminating the possibility that the same sequence will be generated
-    elsewhere in the program.
+    Counter_based_urngs constructed from different bases, even bases
+that differ in only a single bit, will generate independent,
+non-overlapping sequences of random values.  Thus, by choosing a value
+in the domain that encodes some program-specific state (e.g.,
+atoms[i].id and timestep), we produce a unique stream (of length 2^32,
+of which we use about 6) for each atom at each timestep that is
+statistically independent of all other streams.  Notice that the
+random values generated for a particular atom at a particular timestep
+are independent of the number of threads or the assignment of atoms to
+threads.  The additional constant THERMALIZE_CTXT is used to
+distinguish this loop from any other loop or context in the program,
+eliminating the possibility that the same sequence will be generated
+elsewhere in the program.
 
-- Since it models a URNG, cbrng can be passed as an argument to the
-normal_distribution, nd.  In order to make each atom independent,
+- PRFs are keyed.  Two Prfs of the same type, initialized with the
+same key are indistinguishable and two Prfs initialized with different
+keys, even if they differ in only a single bit will give rise to
+statistically independent sequences (even if they are restarted with
+the same base counter).  The counter_based_engine's constructor's seed
+argument is used to 'key' its Prf.  E.g.,
 
-        nd.reset() 
-    
-    is called each time through the loop.
-
-- PRFs are keyed.  I.e., the Prf constructor takes a key_type as an
-argument.  Two Prfs of the same type, initialized with the same key
-are indistinguishable.  On the other hand, two Prfs constructed from
-keys that differ in any way, even by a single bit, will give rise to
-statistically independent counter_based_urngs and output streams.
-
-    In the example, we initialize the PRF outside the loop with:
-
-        Prf::key_type key = {seed};
-        Prf prf(key);  // seed may come from command line
-
+        counter_based_engine<Prf, 32> cbeng(seed);
 
 
 Pseudo-random functions:  Philox and Threefry
@@ -172,42 +166,72 @@ statistically independent, even if the keys differ by only a single
 bit or follow regular patterns.  Among other things, threefry and
 philox pass the entire BigCrush suite of tests.
 
-counter_based_urng
-------------------
-
-The counter_based_urng class uses the pseudo-random property of PRFs
-to perform random number generation in accordance with the
-requirements of a UniformRandomNumberGenerator.  It reserves some
-number (by default, all) of most-significant bits of the highest-index
-member of the domain_type array for its own internal use as a
-"counter".  It is an error for the domain_type constructor argument to
-have non-zero bits in this range.  Whenever new random values are
-required, the "counter bits" are incremented and the PRF is called,
-generating a new set of random values that will be returned by
-counter_based_urng.  It is an error to request random values after the
-counter is exhausted.  Thus, counter_based_urngs will typically have
-fairly "short" sequence lengths (anything from 4 up to 2^64).  This is
-usually more than sufficient to provide input to one or more
-Distributions, which generally call their engine a non-deterministic,
-but usually small number of times.  On the other hand, it is cheap and
-efficient to create huge numbers (up to 2^255) of independent
-counter_based_urngs on demand.
-
-
 counter_based_engine
 --------------------
 
-The counter_based_engine class is a templated adapter class that
-models a bona fide RandomNumberEngine.  In particular, it is Seedable
-in the same way as other Engines, so it can be used in any program
-that expects a RandomNumberEngine.  The counter_based_engine offers
-two very useful properties:
+The counter_based_engine class uses the pseudo-random property of PRFs
+to perform random number generation in accordance with the
+requirements of a UniformRandomNumberGenerator.  It reserves
+'CounterBits' of most-significant bits of the highest-index members of
+the domain_type array for its own internal use as a "counter".
 
-1 - it has a very small size, and a very fast constructor, so it is
-practical to instantiate millions of them in a large parallel
-application.
+Whenever new random values are required, the counter bits are
+incremented and the PRF is called, generating a new set of random
+values that will be returned by counter_based_urng.  It is an error to
+request random values after the counter bits are exhausted.  Thus,
+the sequence length of a counter_based_engine is under programmer
+control.  It can be as short as 2 or as long as the length of the
+domain_type (up to 2^256 for the PRFs provided).
 
-2 - the discard() function is very fast and runs in constant time.
+The remaining bits, i.e., the non-CounterBits are available to the
+programmer to use as a 'base counter', which can be set via the
+restart(Prf::domain_type) member function, via an overloaded
+constructor, or via an overloaded seed() member function.  The base
+counter allows the program to manage practially unlimited numbers (up
+to 2^(256-CounterBits)) of reasonable-length (up to 2^CounterBits)
+random sequences.  By logically associating independent random
+seqences with distinct program elements (c.f., atom.id+thread, in the
+example above), it's possible to write parallel programs whose
+output is independent of thread scheduling or work assignment.
+
+'Seeding' a counter_based_engine corresponds to 'keying' its
+underlying Prf.  But note that they key space is typically much larger
+than a single value of the engine's output_type.  So,
+counter_based_engine has additional constructors that allow it to be
+constructed from an existing Prf, or from a value of the Prf's
+key_type (which is then used to initialize the underlying Prf).  I.e.,
+
+    counter_based_engine(const& Prf);
+    counter_based_engine(Prf::key_type);
+
+It is also possible to set the base_count at construction time:
+
+    counter_based_engine(const& Prf, Prf::domain_type);
+    counter_based_engine(Prf::key_type, Prf::domain_type);
+  
+And finally, there are corresponding overloads of seed():
+
+    seed(const& Prf);
+    seed(Prf::key_type);
+    seed(const& Prf, Prf::domain_type);
+    seed(Prf::key_type, Prf::domain_type);
+
+Some performance-related features make counter_based_engines
+particularly well-suited for parallel applications:
+
+- they have very small memory footprint: Typically a domain_type (2-4
+words), a range_type (2-4 words) a Prf (2-4 words) and an integer
+index (one word).  Good compilers can often fit it all in registers,
+especially if it has limited lifetime.  Thus, it can be beneficial to
+create and destroy a CBENG as close as possible/convenient to the loop
+that uses it.  The short lifetime may allow a good compiler to
+optimize creation, use and destruction down to a handful of
+instructions operating on a handful of temporary registers.
+
+- restart() is little more than a fixed number of integer assignments.
+It is very fast and highly amenable to optimization.
+
+- discard() is also very fast and runs in constant time.
 Parallel programs can use this to "leapfrog" multiple sequences over
 one another in different threads, or it can be used to initialize
 generators in different threads with starting points that are

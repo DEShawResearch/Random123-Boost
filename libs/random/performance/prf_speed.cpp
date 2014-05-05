@@ -18,7 +18,6 @@
 #include <boost/random/philox.hpp>
 #include <boost/random/threefry.hpp>
 #include <boost/random/counter_based_engine.hpp>
-#include <boost/random/counter_based_urng.hpp>
 
 /*
  * Configuration Section
@@ -53,80 +52,19 @@ static const double cpu_frequency = 3.07 * 1e9;
 // provides an "identity" prf, just for comparison
 template <unsigned _N, typename UINT>
 struct IdentityPrf{
-    static const unsigned N=_N;
-    typedef boost::array<UINT, N> domain_type;
-    typedef boost::array<UINT, N> range_type;
+    static const unsigned Ndomain=_N;
+    static const unsigned Nrange=_N;
+    static const unsigned Nkey=1;
+    typedef boost::array<UINT, Ndomain> domain_type;
+    typedef boost::array<UINT, Nrange> range_type;
     typedef boost::array<UINT, 1> key_type;
     typedef UINT dvalue_type;
     typedef UINT rvalue_type;
-    typedef domain_type domain_array_type;
     IdentityPrf(key_type&){}
-    static dvalue_type domain_array_min()  { return std::numeric_limits<dvalue_type>::min(); }
-    static dvalue_type domain_array_max()  { return std::numeric_limits<dvalue_type>::max(); }
-    static domain_type make_domain(domain_array_type da){ return da; }
-    
-    typedef range_type range_array_type;
-    static rvalue_type range_array_min()  { return std::numeric_limits<rvalue_type>::min(); }
-    static rvalue_type range_array_max()  { return std::numeric_limits<rvalue_type>::max(); }
-    static range_array_type make_range_array(range_type r) {return r;}
+    IdentityPrf(UINT){}
 
     range_type operator()(domain_type c){ return c; }
 };
-
-// simplest "random" number generator possible, to check on overhead
-class counting
-{
-public:
-  typedef int result_type;
-
-  BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
-
-  counting() : _x(0) { }
-  result_type operator()() { return ++_x; }
-  result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () const { return 1; }
-  result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () const { return (std::numeric_limits<result_type>::max)(); }
-
-private:
-  int _x;
-};
-
-
-// decoration of variate_generator to make it runtime-exchangeable
-// for speed comparison
-template<class Ret>
-class RandomGenBase
-{
-public:
-  virtual Ret operator()() = 0;
-  virtual ~RandomGenBase() { }
-};
-
-template<class URNG, class Dist, class Ret = typename Dist::result_type>
-class DynamicRandomGenerator
-  : public RandomGenBase<Ret>
-{
-public:
-  DynamicRandomGenerator(URNG& urng, const Dist& d) : _rng(urng, d) { }
-  Ret operator()() { return _rng(); }
-private:
-  boost::variate_generator<URNG&, Dist> _rng;
-};
-
-template<class Ret>
-class GenericRandomGenerator
-{
-public:
-  typedef Ret result_type;
-
-  GenericRandomGenerator() { };
-  void set(boost::shared_ptr<RandomGenBase<Ret> > p) { _p = p; }
-  // takes over ownership
-  void set(RandomGenBase<Ret> * p) { _p.reset(p); }
-  Ret operator()() { return (*_p)(); }
-private:
-  boost::shared_ptr<RandomGenBase<Ret> > _p;
-};
-
 
 // start implementation of measuring timing
 
@@ -159,13 +97,9 @@ void run(int iter, const std::string & name, RNG rng)
 }
 
 template <typename Prf>
-void  __attribute__((noinline)) run_cburng(const std::string& name, int iter){
-    std::string pfx= "counter_based_urng<" + name + ">";
-    // Initialize the Prf with a key not known at compile time.
-    // Otherwise, the compiler might elide some of the key-related
-    // code.
-    typename Prf::key_type k = {typename Prf::key_type::value_type(iter)};
-    run(iter, pfx, boost::random::counter_based_urng<Prf>(Prf(k), typename Prf::domain_type()));
+void  __attribute__((noinline)) run_cbeng(const std::string& name, int iter){
+    std::string pfx= "counter_based_engine<" + name + ">";
+    run(iter, pfx, boost::random::counter_based_engine<Prf>(iter));
 }
 
 void do_threefry(int iter){
@@ -173,32 +107,32 @@ void do_threefry(int iter){
   // *much lower* (3x) performance for some of the other functions.
   // Wild guess - we've hit some limit meant to prevent too much
   std::cout << "Threefry: with recommended safety margin\n";
-  run_cburng<boost::random::threefry<4, uint64_t> >("threefry4x64", iter);
-  run_cburng<boost::random::threefry<4, uint32_t> >("threefry4x32", iter);
-  run_cburng<boost::random::threefry<2, uint64_t> >("threefry2x64", iter);
-  //run_cburng<boost::random::threefry<2, uint32_t> >("threefry2x32", iter);
+  run_cbeng<boost::random::threefry<4, uint64_t> >("threefry4x64", iter);
+  run_cbeng<boost::random::threefry<4, uint32_t> >("threefry4x32", iter);
+  run_cbeng<boost::random::threefry<2, uint64_t> >("threefry2x64", iter);
+  //run_cbeng<boost::random::threefry<2, uint32_t> >("threefry2x32", iter);
 
   std::cout << "Threefry:  Crush-resistant, with no safety margin\n";
   // Note - on a 3.07GHz Xeon 5667 (Westmere) threefry4x64-12 should
   // be the winner at around 1.7 CPB.
-  run_cburng<boost::random::threefry<4, uint64_t, 12> >("threefry4x64-12", iter);
-  run_cburng<boost::random::threefry<4, uint32_t, 12> >("threefry4x32-12", iter);
-  run_cburng<boost::random::threefry<2, uint64_t, 13> >("threefry2x64-13", iter);
-  //run_cburng<boost::random::threefry<2, uint32_t, 13> >("threefry2x32-13", iter);
+  run_cbeng<boost::random::threefry<4, uint64_t, 12> >("threefry4x64-12", iter);
+  run_cbeng<boost::random::threefry<4, uint32_t, 12> >("threefry4x32-12", iter);
+  run_cbeng<boost::random::threefry<2, uint64_t, 13> >("threefry2x64-13", iter);
+  //run_cbeng<boost::random::threefry<2, uint32_t, 13> >("threefry2x32-13", iter);
 }
 
 void do_philox(int iter){
   std::cout << "Philox: with recommended safety margin\n";
-  run_cburng<boost::random::philox<4, uint64_t> >("philox4x64", iter);
-  run_cburng<boost::random::philox<4, uint32_t> >("philox4x32", iter);
-  run_cburng<boost::random::philox<2, uint64_t> >("philox2x64", iter);
-  run_cburng<boost::random::philox<2, uint32_t> >("philox2x32", iter);
+  run_cbeng<boost::random::philox<4, uint64_t> >("philox4x64", iter);
+  run_cbeng<boost::random::philox<4, uint32_t> >("philox4x32", iter);
+  run_cbeng<boost::random::philox<2, uint64_t> >("philox2x64", iter);
+  run_cbeng<boost::random::philox<2, uint32_t> >("philox2x32", iter);
 
   std::cout << "Philox:  Crush-resistant, with no safety margin\n";
-  run_cburng<boost::random::philox<4, uint64_t, 7> >("philox4x64-7", iter);
-  run_cburng<boost::random::philox<4, uint32_t, 7> >("philox4x32-7", iter);
-  run_cburng<boost::random::philox<2, uint64_t, 7> >("philox2x64-6", iter);
-  run_cburng<boost::random::philox<2, uint32_t, 7> >("philox2x32-7", iter);
+  run_cbeng<boost::random::philox<4, uint64_t, 7> >("philox4x64-7", iter);
+  run_cbeng<boost::random::philox<4, uint32_t, 7> >("philox4x32-7", iter);
+  run_cbeng<boost::random::philox<2, uint64_t, 6> >("philox2x64-6", iter);
+  run_cbeng<boost::random::philox<2, uint32_t, 7> >("philox2x32-7", iter);
 }
 
 int main(int argc, char*argv[])
@@ -216,7 +150,7 @@ int main(int argc, char*argv[])
     atoi(argv[1]);
 
   std::cout << "\nPseudo-random functions:\n";
-  run_cburng<IdentityPrf<2, uint64_t> >("Ident2x64", iter);
+  run_cbeng<IdentityPrf<2, uint64_t> >("Ident2x64", iter);
 
   do_threefry(iter);
   do_philox(iter);

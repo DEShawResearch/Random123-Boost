@@ -214,6 +214,7 @@ public:
     BOOST_CONCEPT_USAGE(RandomNumberFunctor)
     {
         same_type(g(d), range_type());
+        // TODO:  keys and seeding, Streamable, EqualityComparable
 
         (void)F();
     }

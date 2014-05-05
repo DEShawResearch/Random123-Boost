@@ -107,6 +107,8 @@ public:
     philox(philox& v) : common_type(static_cast<common_type &>(v)){}
     philox(const philox& v) : common_type(static_cast<const common_type &>(v)){}
 
+    philox(Uint v) : common_type(v){}
+
     BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(philox, SeedSeq, seq)
         : common_type(seq){}
 
@@ -156,8 +158,15 @@ public:
     philox(philox& v) : common_type(static_cast<common_type &>(v)){}
     philox(const philox& v) : common_type(static_cast<const common_type &>(v)){}
 
+    philox(Uint v) : common_type(v){}
+
     BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(philox, SeedSeq, seq)
-        : common_type(seq){}
+        : common_type(seq)
+    { }
+
+    BOOST_RANDOM_DETAIL_CONST_SEED_SEQ_CONSTRUCTOR(philox, SeedSeq, seq)
+        : common_type(seq)
+    { }
 
     template<class It> philox(It& first, It last)
         : common_type(first, last)

@@ -54,7 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace boost{
 namespace random{
 
-template<typename Prf>
+template<typename Prf, unsigned CtrBits=std::numeric_limits<typename Prf::domain_type::value_type>::digits*Prf::Ndomain>
 struct counter_based_engine {
     typedef Prf prf_type;
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
@@ -65,6 +65,13 @@ protected:
     typedef typename Prf::domain_type domain_type;
     typedef typename Prf::key_type key_type;
     typedef typename domain_type::value_type dvalue_type;
+    BOOST_STATIC_CONSTANT(unsigned, dvalue_bits = std::numeric_limits<dvalue_type>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, incr_idx = (Prf::Ndomain*dvalue_bits - CtrBits)/dvalue_bits);
+    BOOST_STATIC_ASSERT(incr_idx < Prf::Ndomain);
+    BOOST_STATIC_CONSTANT(dvalue_type, incr_stride = dvalue_type(1)<<((Prf::Ndomain*dvalue_bits - CtrBits)%dvalue_bits));
+    BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = CtrBits/dvalue_bits);
+    BOOST_STATIC_CONSTANT(dvalue_type, dvalue_mask = ~dvalue_type(0));
+
     prf_type b;
     domain_type c;
     range_type v;
@@ -81,68 +88,54 @@ protected:
     size_t nth() const { return next - v.begin(); }
         
     void incr(){
-        typename domain_type::iterator p = c.begin();
-        do{
-            if(*p != Prf::domain_array_max()){
-                *p += 1;
+        typename domain_type::reverse_iterator p = c.rbegin();
+        for(unsigned w=0; w<FullCtrWords; ++w){
+            *p += 1;
+            if(*p++)
                 return;
-            }
-            *p = min();
-        }while(++p != c.end());
-        if(*--p == min())
-            throw std::out_of_range("counter_based_engine::incr(): ran out of counters");
+        }
+        *p += incr_stride;
+        if(*p < incr_stride)
+            return;
+        throw std::out_of_range("counter_based_engine::incr(): ran out of counters");
     }
 
     void incr(boost::uintmax_t n){
-        typename domain_type::iterator p = c.begin();
-        do{
-            dvalue_type n0;
-            // if min()/max() spans a binary dvalue_type, we can use
-            // shifts and masks to figure out how much to add to *p,
-            // n0, and how much to carry to the rest of the array, n.
-            // N.B.  The conditional can be evaluated at compile-time,
-            // so a good compiler will only generate one branch of the
-            // if/else.
-            if( std::numeric_limits<dvalue_type>::is_specialized &&
-                std::numeric_limits<dvalue_type>::radix == 2 &&
-                !std::numeric_limits<dvalue_type>::is_signed &&
-                Prf::domain_array_max() == std::numeric_limits<dvalue_type>::max() && 
-                Prf::domain_array_min() == 0
-                ){
-                n0 = n & Prf::domain_array_max();
-                // Another compile-time conditional to avoid shifting by too much
-                if( std::numeric_limits<dvalue_type>::digits == std::numeric_limits<boost::uintmax_t>::digits ){
-                    n = 0;
-                }else{
-                    n >>= std::numeric_limits<dvalue_type>::digits-1;
-                    n >>= 1;
-                }
-            }else{
-                boost::uintmax_t range = static_cast<boost::uintmax_t>(1) + Prf::domain_array_max() - Prf::domain_array_min();
-                n0 = n%range;
-                n /= range;
-            }
-            if( *p <= Prf::domain_array_max() - n0 )
-                *p += n0;
-            else{
-                // p +=  n0 - (1 +  max -  min) // add n0, wrap by modulus
-                // p -= max-n0 + 1 - min
-                *p -= (Prf::domain_array_max() - n0) + 1 - Prf::domain_array_min();
+        typename domain_type::reverse_iterator p = c.rbegin();
+        for(unsigned w=0; w<FullCtrWords; ++w){
+            *p += n&dvalue_mask;
+            n >>= dvalue_bits-1; n>>=1;
+            if(*p++ == 0)
                 n++;
-            }
-        }while(n && ++p != c.end());
-        if(n)
-            throw std::out_of_range("counter_based_engine::incr(n):  ran out of counters");
+            if(n==0)
+                return;
+        }
+        // FIXME - these don't test overflow correctly!!
+        *p += n*incr_stride;
+        if(*p < incr_stride)
+            return;
+        throw std::out_of_range("counter_based_engine::incr(): ran out of counters");
     }
 
     void initialize(){
-        c.fill(Prf::domain_array_min());
+        c.fill(0);
         next = v.end();
     }
 
+    void chkhighbits(domain_type c){
+        bool bad = false;
+        typename domain_type::const_iterator p = c.begin() + incr_idx;
+        if( *p++ >= incr_stride )
+            bad = true;
+        for( ; p != c.end(); ++p)
+            if(*p) bad = true;
+        if(bad)
+            throw std::out_of_range("Initial value of counter_based_engine's counter is too large");
+    }
+
 public:
-    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () { return Prf::range_array_min(); }
-    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return Prf::range_array_max(); }
+    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () { return 0; }
+    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return std::numeric_limits<dvalue_type>::max(); }
 
     counter_based_engine()
         : b()
@@ -169,7 +162,7 @@ public:
     }
 
     BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, result_type, value)
-        : b(boost::random::seed_seq(&value, &value+1))
+        : b(value)
     { 
         //std::cerr << "cbe(result_type)\n";
         initialize();
@@ -198,8 +191,8 @@ public:
     BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, result_type, value)
     { 
         //std::cerr << "cbe::seed(arithmetic)\n";
-        boost::random::seed_seq ss(&value, &value+1);
-        seed(ss);
+        b.seed(value);
+        initialize();
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(counter_based_engine, SeedSeq, seq){
@@ -267,38 +260,40 @@ public:
     { detail::generate_from_int(*this, first, last); }
 
     //--------------------------
-    // Some bonus methods, not required for a Random Number
-    // Engine
 
-    // A pos_type and tell() and seek(pos_type) methods that give the
-    // caller some visibility into and control over where we are in
-    // the counter sequence.
-    typedef std::pair<domain_type, size_t> pos_type;
-    pos_type tell() const{ 
-        return make_pair(c, nth());
-    }
-    void seek(pos_type pos){ 
-        c = pos.first; setnext(pos.second);
+    // Constructors and seed() method to create a counter_based_engine with
+    // a given Prf and a user-managed starting point.
+    //
+    // Note that Prfs can be implicitly constructed from a key_type, so
+    // these also work as:
+    //    Prf::key_type k;
+    //    Prf::domain_type start;
+    //    counter_based_engine<Prf> cbe1(k);
+    //    counter_based_engine<Prf, CtrBits> cbe2(k, start);
+    //    cbe2.seed(k, start);
+    //
+    // With C++11 initializer lists you can have a philox4x32 engine
+    // with 64 user-managed key-bits, 96 user-managed "start" bits and
+    // 32 bits of counter with: typedef philox<4, uint32_t> Prf;
+    // counter_based_engine<Prf, 32> cbe3({1,2}, {3,4,5});
+    explicit counter_based_engine(Prf _b, domain_type start = domain_type()) : b(_b), c(start), next(v.end()){
+        chkhighbits(start);
     }
 
-    // Constructors and seed() method to create an counter_based_engine with
-    // a given key as its seed.
-    // We need const and non-const to supersede the SeedSeq template.
-    // FIXME - these might benefite from something like BOOST_DETAIL_???_CONSTRUCTOR treatment.
-    explicit counter_based_engine(const key_type &uk) : b(uk), c(), next(v.end()){}
-    explicit counter_based_engine(key_type &uk) : b(uk), c(), next(v.end()){}
-    void seed(const key_type& uk){
-        *this = counter_based_engine(uk);
-    }        
-    void seed(key_type& uk){
-        *this = counter_based_engine(uk);
+    void seed(Prf b, domain_type start){
+        //std::cerr << "cbe::seed(Prf, start)\n";
+        *this = counter_based_engine(b, start);
     }        
 
-    // Since you can seed *this with key_type, it seems reasonable
-    // to allow the caller to know what seed/key *this is using.
-    key_type getseed() const{
-        return b.getkey();
+    // restart - resets the user-managed 'start' bits without
+    //  touching the Prf or its key.  The counter is reset
+    //  so there are again 2^CtrBits counters available.
+    void restart(domain_type start){ 
+        chkhighbits(start);
+        c = start;
+        next = v.end();
     }
+
 };
 
 } // namespace random

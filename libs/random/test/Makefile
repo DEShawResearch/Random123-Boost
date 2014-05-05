@@ -49,7 +49,7 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 else # g++
 
-OPTIMIZE= -O3 -ggdb3
+OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 CXXFLAGS+=$(COMMONFLAGS) -std=c++98
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
