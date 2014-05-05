@@ -95,11 +95,6 @@ private:
         ctr = out;
         key[0] += Constants::W0;
     }
-public:
-    philox() : common_type(){}
-    philox(_key_type k) : common_type(k){}
-    philox(philox& v) : common_type(static_cast<common_type &>(v)){}
-    philox(const philox& v) : common_type(static_cast<const common_type &>(v)){}
 
     struct _roundapplyer{
         _ctr_type& c;
@@ -107,9 +102,14 @@ public:
         _roundapplyer(_ctr_type& _c, _key_type& _k): c(_c), k(_k){}
         void operator()(unsigned){ round(c, k); }
     };
+public:
+    philox() : common_type(){}
+    philox(_key_type k) : common_type(k){}
+    philox(const philox& v) : common_type(v){}
+
     _ctr_type operator()(_ctr_type c){
         _key_type kcopy = this->k;
-#if 0
+#if 0   // using mpl to unroll the loop doesn't seem to help much.
         _roundapplyer ra(c, kcopy);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >(ra);
 #else
@@ -137,11 +137,6 @@ private:
         key[0] += Constants::W0;
         key[1] += Constants::W1;
     }
-public:
-    philox() : common_type(){}
-    philox(_key_type k) : common_type(k){}
-    philox(philox& v) : common_type(static_cast<common_type &>(v)){}
-    philox(const philox& v) : common_type(static_cast<const common_type &>(v)){}
 
     struct _roundapplyer{
         _ctr_type& c;
@@ -149,9 +144,15 @@ public:
         _roundapplyer(_ctr_type& _c, _key_type& _k): c(_c), k(_k){}
         void operator()(unsigned){ round(c, k); }
     };
+
+public:
+    philox() : common_type(){}
+    philox(_key_type k) : common_type(k){}
+    philox(const philox& v) : common_type(v){}
+
     _ctr_type operator()(_ctr_type c){
         _key_type kcopy = this->k;
-#if 0
+#if 0   // using mpl to unroll the loop doesn't seem to help philox
         _roundapplyer ra(c, kcopy);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >(ra);
 #else

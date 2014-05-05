@@ -51,7 +51,7 @@ else # g++
 
 OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
-CXXFLAGS+=$(COMMONFLAGS) -std=c++11
+CXXFLAGS+=$(COMMONFLAGS) -std=c++98
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
 
 endif

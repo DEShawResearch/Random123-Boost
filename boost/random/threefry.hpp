@@ -142,15 +142,14 @@ private:
 public:
     threefry() : common_type(){}
     threefry(_key_type _k) : common_type(_k){}
-    threefry(threefry& v) : common_type(static_cast<common_type &>(v)) {}
-    threefry(const threefry& v) : common_type(static_cast<const common_type &>(v)){}
+    threefry(const threefry& v) : common_type(v){}
 
     _ctr_type operator()(_ctr_type c){ 
         Uint ks[3];
         ks[2] = Constants::KS_PARITY;
         ks[0] = this->k[0]; ks[2] ^= this->k[0]; c[0] += this->k[0];
         ks[1] = this->k[1]; ks[2] ^= this->k[1]; c[1] += this->k[1];
-#if 1
+#if 1   // gcc doesn't want to unroll this without some help from mpl::for_each
         _roundapplyer ra(c, ks);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >( ra );
         return c;
@@ -202,8 +201,7 @@ private:
 public:
     threefry() : common_type(){}
     threefry(_key_type _k) : common_type(_k){}
-    threefry(threefry& v) : common_type(static_cast<common_type &>(v)) {}
-    threefry(const threefry& v) : common_type(static_cast<const common_type &>(v)){}
+    threefry(const threefry& v) : common_type(v){}
 
     _ctr_type operator()(_ctr_type c){ 
         Uint ks[5];
@@ -213,7 +211,7 @@ public:
         ks[2] = this->k[2]; ks[4] ^= this->k[2]; c[2] += this->k[2];
         ks[3] = this->k[3]; ks[4] ^= this->k[3]; c[3] += this->k[3];
 
-#if 1
+#if 1   // gcc doesn't want to unroll this without some help from mpl::for_each
         _roundapplyer ra(c, ks);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >( ra );
         return c;

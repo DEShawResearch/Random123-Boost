@@ -52,17 +52,15 @@ struct prf_common{
     prf_common(key_type _k) : k(_k){
         //std::cerr << "prf_common(key_type)\n";
     }
-    void setkey(key_type _k){ k = _k; }
-    key_type getkey() const { return k; }
 
     prf_common() { k = key_type(); }
 
-    prf_common(prf_common& v) : k(v.k) {
-        //std::cerr << "prf_common(prf_common&)\n";
-    }
     prf_common(const prf_common& v) : k(v.k) {
         //std::cerr << "prf_common(const prf_common&)\n";
     }
+
+    void setkey(key_type _k){ k = _k; }
+    key_type getkey() const { return k; }
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, prf_common, f){
         for(typename key_type::const_iterator p=f.k.begin(); p!=f.k.end(); ++p)

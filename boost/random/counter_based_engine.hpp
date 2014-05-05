@@ -126,7 +126,7 @@ protected:
         next = v.end();
     }
 
-    void chkhighbits(domain_type c){
+    void chk_highbasebits(domain_type c){
         bool bad = false;
         typename domain_type::const_iterator p = c.begin() + incr_idx;
         if( *p++ >= incr_stride )
@@ -167,22 +167,22 @@ protected:
 
     // chk_highkeybits - first check that the high CtrBitsBits of k
     //  are 0.  If they're not, throw an out_of_range exception.  If
-    //  they are, then replace them with CtrBits-1.
+    //  they are, then call set_highkeybits.
     key_type chk_highkeybits(key_type k){
-        unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
+        const unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
+        //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
         BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
         if( k[Prf::Nkey-1] & ~CtrBitsMask )
             throw std::out_of_range("high bits of key are reserved for internal use by counter_based_engine");
         return set_highkeybits(k);
     }
 
-    // set_highkeybits - set the high bits of k to CtrBitsBits,
+    // set_highkeybits - set the high CtrBitsBits of k to CtrBits-1,
     //  regardless of their original contents.
     key_type set_highkeybits(key_type k){
-        unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
-        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>>CtrBitsBits);
+        const unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
         //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
-        //BOOST_STATIC_ASSERT(CtrBitsBits <= 32); // for seed_seq
+        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
         k[Prf::Nkey-1] &= CtrBitsMask;
         k[Prf::Nkey-1] |= kvalue_type(CtrBits-1)<<(kvalue_bits - CtrBitsBits);
         return k;
@@ -325,7 +325,7 @@ public:
     //  touching the Prf or its key.  The counter is reset so there
     //  are again 2^CtrBits counters available.
     void restart(domain_type start){ 
-        chkhighbits(start);
+        chk_highbasebits(start);
         c = start;
         next = v.end();
     }
@@ -336,7 +336,7 @@ public:
     // high bits are reserved for use by the engine to disambiguate
     // engines created with different CounterBits.
     explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(sethighkeybits(k)), c(base), next(v.end()){
-        chkhighbits(base);
+        chk_highbasebits(base);
     }
 
     void seed(key_type k, domain_type base){
