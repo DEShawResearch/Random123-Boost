@@ -387,15 +387,15 @@ int main(int argc, char*argv[])
   run(iter, "ranlux24", boost::ranlux3());
   run(iter, "ranlux48", boost::ranlux4());
 
-  run(iter, "threefry4x64", boost::random::counter_based_engine< boost::random::threefry<4, uint64_t>, 64>());
-  run(iter, "threefry2x64", boost::random::counter_based_engine< boost::random::threefry<2, uint64_t>, 64>());
-  run(iter, "threefry4x32", boost::random::counter_based_engine< boost::random::threefry<4, uint32_t>, 64>());
-  run(iter, "threefry2x32", boost::random::counter_based_engine< boost::random::threefry<2, uint32_t>, 64>());
+  run(iter, "threefry4x64", boost::random::counter_based_engine< boost::random::threefry<4, uint64_t> >());
+  run(iter, "threefry2x64", boost::random::counter_based_engine< boost::random::threefry<2, uint64_t> >());
+  run(iter, "threefry4x32", boost::random::counter_based_engine< boost::random::threefry<4, uint32_t> >());
+  run(iter, "threefry2x32", boost::random::counter_based_engine< boost::random::threefry<2, uint32_t> >());
 
-  run(iter, "philox4x64", boost::random::counter_based_engine< boost::random::philox<4, uint64_t>, 64>());
-  run(iter, "philox2x64", boost::random::counter_based_engine< boost::random::philox<2, uint64_t>, 64>());
-  run(iter, "philox4x32", boost::random::counter_based_engine< boost::random::philox<4, uint32_t>, 64>());
-  run(iter, "philox2x32", boost::random::counter_based_engine< boost::random::philox<2, uint32_t>, 64>());
+  run(iter, "philox4x64", boost::random::counter_based_engine< boost::random::philox<4, uint64_t> >());
+  run(iter, "philox2x64", boost::random::counter_based_engine< boost::random::philox<2, uint64_t> >());
+  run(iter, "philox4x32", boost::random::counter_based_engine< boost::random::philox<4, uint32_t> >());
+  run(iter, "philox2x32", boost::random::counter_based_engine< boost::random::philox<2, uint32_t> >());
 
   run(iter, "counting", counting());
 
@@ -418,9 +418,9 @@ int main(int argc, char*argv[])
   
   distrib(iter, "lagged_fibonacci607", boost::lagged_fibonacci607());
 
-  distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t>, 64 >());
-  distrib(iter, "philox4x64", boost::random::counter_based_engine<boost::random::philox<4, uint64_t>, 64>());
+  distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t> >());
+  distrib(iter, "philox4x64", boost::random::counter_based_engine<boost::random::philox<4, uint64_t> >());
 
-  distrib(iter, "threefry4x32-12", boost::random::counter_based_engine<boost::random::threefry<4, uint32_t, 12>, 32>());
-  distrib(iter, "philox2x32-7", boost::random::counter_based_engine<boost::random::philox<2, uint32_t, 7>, 32>());
+  distrib(iter, "threefry4x32-12", boost::random::counter_based_engine<boost::random::threefry<4, uint32_t, 12> >());
+  distrib(iter, "philox2x32-7", boost::random::counter_based_engine<boost::random::philox<2, uint32_t, 7> >());
 }

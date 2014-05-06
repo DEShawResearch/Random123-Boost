@@ -54,7 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace boost{
 namespace random{
 
-template<typename Prf, unsigned CtrBits>
+template<typename Prf, unsigned CtrBits = Prf::range_bits/2>
 struct counter_based_engine {
     typedef Prf prf_type;
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);

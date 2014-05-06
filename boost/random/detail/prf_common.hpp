@@ -39,14 +39,18 @@ namespace boost{
 namespace random{
 namespace detail{
 
-template <unsigned Ndomain_, unsigned Nrange_, unsigned Nkey_, typename Uint>
+template <unsigned Ndomain_, unsigned Nrange_, unsigned Nkey_, typename domain_vtype,
+          typename range_vtype=domain_vtype, typename key_vtype=domain_vtype>
 struct prf_common{
-    static const unsigned Ndomain = Ndomain_;
-    static const unsigned Nrange = Nrange_;
-    static const unsigned Nkey = Nkey_;
-    typedef array<Uint, Ndomain> domain_type;
-    typedef array<Uint, Nrange> range_type;
-    typedef array<Uint, Nkey> key_type ;
+    BOOST_STATIC_CONSTANT(unsigned, Ndomain = Ndomain_);
+    BOOST_STATIC_CONSTANT(unsigned, Nrange = Nrange_);
+    BOOST_STATIC_CONSTANT(unsigned, Nkey = Nkey_);
+    BOOST_STATIC_CONSTANT(unsigned, domain_bits = Ndomain*std::numeric_limits<domain_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, range_bits = Nrange*std::numeric_limits<range_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, key_bits = Nkey*std::numeric_limits<key_vtype>::digits);
+    typedef array<domain_vtype, Ndomain> domain_type;
+    typedef array<range_vtype, Nrange> range_type;
+    typedef array<key_vtype, Nkey> key_type ;
 
     key_type k;
     prf_common(key_type _k) : k(_k){

@@ -55,6 +55,7 @@ struct IdentityPrf{
     static const unsigned Ndomain=_N;
     static const unsigned Nrange=_N;
     static const unsigned Nkey=1;
+    static const unsigned range_bits=std::numeric_limits<UINT>::digits*Nrange;
     typedef boost::array<UINT, Ndomain> domain_type;
     typedef boost::array<UINT, Nrange> range_type;
     typedef boost::array<UINT, 1> key_type;
@@ -102,7 +103,7 @@ void  __attribute__((noinline)) run_cbeng(const std::string& name, int iter){
     // N.B.  Use 24 bits of iter as the key.  Not really necessary, but
     // it prevents the compiler from possibly performing some of the key
     // arithmetic at compile-time.
-    run(iter, pfx, boost::random::counter_based_engine<Prf, 64>(iter&0xffffff));
+    run(iter, pfx, boost::random::counter_based_engine<Prf>(iter&0xffffff));
 }
 
 void do_threefry(int iter){
