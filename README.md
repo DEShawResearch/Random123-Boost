@@ -77,8 +77,8 @@ Let's consider the code changes between the two fragments:
 parameters are a Pseudo-Random Function (PRF) and the number of bits in
 its 'counter'.
 
-    typedef threefry<4, uint32_t> Prf;
-    counter_based_engine<Prf, 32> cbeng(seed);
+        typedef threefry<4, uint32_t> Prf;
+        counter_based_engine<Prf, 32> cbeng(seed);
 
     The sequence length of counter_based_engine is governed by its
 second template argument (in this case 32) and the number of random
@@ -95,9 +95,8 @@ through the loop.  In this example, the 'domain_type' of the
 threefry<4, uint32_t> pseudo-random function is (as the template
 arguments suggest) 128 bits wide.  We've allocated 32 "Counter Bits"
 to the engine.  That leaves us with 96 bits to be managed as a 'base
-counter', which is more than enough to uniquely a unique base counter
-base counter every time through the loop, and use it to restart the
-engine:
+counter', which is more than enough to create a new, unique base counter
+every time through the loop:
 
          Prf::domain_type base = {atoms[i].id, timestep, THERMALIZE_CTXT};
          cbeng.restart(base);
@@ -127,7 +126,7 @@ Pseudo-random functions:  Philox and Threefry
 ---------------------------------------------
 
 Two Pseudo-Random functions are implemented in this source tree: threefry
-and philox.  Both are templated over an unsigned width, an unsigned
+and philox.  They are both described in the SC11 paper.  Both are templated over an unsigned element-count, an unsigned
 integer value type, and a round-count (which takes a reasonable and safe
 default value).  For example:
 
