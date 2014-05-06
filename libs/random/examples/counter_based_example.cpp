@@ -42,7 +42,7 @@ enum { THERMALIZE_CTXT, MASS_ASSIGN_CTXT };
 // of m1 or m2.  Use a bernoulli distribution
 void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key_type& key){
     bernoulli_distribution<float> bd;
-    counter_based_engine<Prf, 5> cbeng(key);
+    counter_based_engine<Prf, 32> cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
         Prf::domain_type start = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
         cbeng.restart(start);
@@ -56,7 +56,7 @@ void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key
 // zero mean and 'sigma' that depends on the temperature and the
 // atomic mass.
 void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf::key_type& key){
-    counter_based_engine<Prf, 5> cbeng(key);
+    counter_based_engine<Prf, 32> cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
         float rmsvelocity = sqrt(kT/atoms[i].mass);
         normal_distribution<float> mbd(0., rmsvelocity);

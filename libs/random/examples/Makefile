@@ -48,11 +48,12 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 else # g++
 
-OPTIMIZE= -ggdb3 -O0
+OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 CXXFLAGS+=$(COMMONFLAGS) -std=c++98
 #CXXFLAGS+=$(COMMONFLAGS) -std=c++11
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
+LDLIBS+=-lboost_thread -lboost_system
 
 endif
 
@@ -70,8 +71,6 @@ All: $(Binaries)
 $(Binaries) : % : %.o
 $(Binaries:%=%.o): $(HDRS)
 $(Binaries:%=%.s): $(HDRS)
-
-counter_based_example : override LDLIBS+=-lboost_thread -lboost_system
 
 .PHONY: test-env
 test-env:
