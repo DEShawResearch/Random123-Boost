@@ -1,18 +1,19 @@
 TODO:
 ----
 o Documentation
- - !!!
+ - the README is a start.
 o tests (use the Boost.Test framework)
- - STARTED:  Concept checkers
- - counter_based_urng and counter_based_urng methods
-   o the existing boost test_generator.ipp is a good start, but
-     we need more:
-     + increments that wrap and that run out
-     + decrements/replay(?)
-     + seek/tell
-     + Engine(k)/seed(k)/getseed()
-     + concept checker
-     + kats for default-initialized engines.
+ - the existing boost test_generator.ipp is a good start, but
+   we need more:
+     + increments that wrap over multiple words and that run out
+     + tests of different CounterBits and verification that
+       they don't overlap.
+     + verification of the compile-time arithmetic on something
+       other than x86_64.
+     + tests like test_philox2x64.cpp for other variants, or
+       some way to put more than one in a file.
+     + concept checker for the counter_based_engine extensions,
+       e.g., restart(), Engine(k), Engine(prf) etc.
  - test philox with and without asm mulhilo
 o portability
  - implement mulhilo for some other architecture.

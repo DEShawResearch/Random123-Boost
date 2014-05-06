@@ -147,23 +147,28 @@ of which are boost::arrays of the underlying value type.  I.e.,
    
 PRFs are keyed pseudo-random functions.  Two Prfs of the same type,
 initialized with the same key are indistinguishable and two Prfs
-initialized with different keys, even if they differ in only a single
+initialized with different keys, even keys that differ in only a single
 bit appear to be unrelated, statistically independent pseudo-random
-functions.  One can obtain apparently random output simply by
-"counting" through inputs in an perfectly regular way.  The
-counter_based_engine conceptually maps 'seeds' to Prf keys and then
-"counts" through the Prf's domain, generating random output in the
-Prf's range.  Strong empirical evidence is presented in the SC11 paper
-for the statistical quality of the threefry and philox
-functions. Among other things, threefry and philox pass the entire
-BigCrush suite of tests.
+functions.  Pseudo-random functions produce apparently random output simply by
+"counting" through inputs in an perfectly regular way.  
 
-For threefry and philox, initialization is extremely fast.  For other
-PRFs, e.g., the cryptographic AES function (not implemented), there
-may be non-trivial computation associated with initialization, so
-initializing PRFs isn't always appropriate in *inner* loops, but is perfectly
-reasonable at thread-scope or anywhere else that a few dozen
-invocations of the generator will amortize the initialization cost.
+The counter_based_engine conceptually maps 'seeds' to Prf keys and
+then "counts" through the Prf's domain, generating random output in
+the Prf's range.  Strong empirical evidence is presented in the SC11
+paper for the statistical quality of the threefry and philox
+functions. Among other things, threefry and philox pass the entire
+BigCrush suite of tests and will not repeat over their entire domain,
+of length 2^(N*sizeof(U)).  They are also very fast - 1.5-4 cycles per
+output byte on modern CPUs.
+
+For threefry and philox, initialization, i.e., re-keying or re-seeding
+is also fast.  They can safely be initialized inside an inner loop.
+For other PRFs, e.g., the cryptographic AES function (not
+implemented), there may be non-trivial computation associated with
+initialization, so initializing PRFs isn't always appropriate in
+*inner* loops, but is perfectly reasonable at thread-scope or anywhere
+else that a few dozen invocations of the generator will amortize the
+initialization cost.
 
 counter_based_engine
 --------------------
@@ -194,21 +199,26 @@ above), it's possible to write parallel programs whose output is
 independent of thread scheduling or work assignment.
 
 'Seeding' a counter_based_engine corresponds to 'keying' its
-underlying Prf.  But note that they key space is typically much larger
+underlying Prf.  But note that the key space is typically much larger
 than a single value of the engine's output_type.  So,
 counter_based_engine has additional constructors that allow it to be
-constructed or seeded from a value of the Prf's key_type.  I.e.,
+constructed or seeded from a value of the Prf's key_type or from
+an existing Prf.  I.e.,
 
     counter_based_engine(Prf::key_type);
+    counter_based_engine(const Prf&)
 
 It is also possible to set the base_count at construction time:
 
     counter_based_engine(Prf::key_type, Prf::domain_type);
+    counter_based_engine(const Prf&, Prf::domain_type);
   
 And of course, there are corresponding overloads of seed():
 
     seed(Prf::key_type);
+    seed(const Prf&);
     seed(Prf::key_type, Prf::domain_type);
+    seed(const Prf&, Prf::domain_type);
 
 To prevent collisions between counter_based_engines instantiated with
 different values of CtrBits, the counter_based_engine reserves the top

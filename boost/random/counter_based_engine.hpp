@@ -339,17 +339,27 @@ public:
     }
 
     // Constructor and seed() method to construct or re-seed a
-    // counter_based_engine from a key and an optional base counter.
-    // It's an error to specify a key with high bits set because the
-    // high bits are reserved for use by the engine to disambiguate
-    // engines created with different CounterBits.
+    // counter_based_engine from a key or a Prf and an optional base
+    // counter.  It's an error to specify a key with high bits set
+    // because the high bits are reserved for use by the engine to
+    // disambiguate engines created with different CounterBits.
     explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(chk_highkeybits(k)), c(base), next(Prf::Nrange){
+        chk_highbasebits(base);
+    }
+
+    explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Prf::Nrange){
+        chk_highkeybits(b.getkey());
         chk_highbasebits(base);
     }
 
     void seed(key_type k, domain_type base){
         //std::cerr << "cbe::seed(Prf, base)\n";
         *this = counter_based_engine(k, base);
+    }        
+
+    void seed(const Prf& _b, domain_type base){
+        //std::cerr << "cbe::seed(Prf, base)\n";
+        *this = counter_based_engine(_b, base);
     }        
 
 
