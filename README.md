@@ -125,9 +125,10 @@ are scheduled and the assignment of atoms to threads.
 Pseudo-random functions:  Philox and Threefry
 ---------------------------------------------
 
-Two Pseudo-Random functions are implemented in this source tree: threefry
-and philox.  They are both described in the SC11 paper.  Both are templated over an unsigned element-count, an unsigned
-integer value type, and a round-count (which takes a reasonable and safe
+Two Pseudo-Random functions are implemented in this source tree:
+threefry and philox.  They are both described in the SC11 paper.  Both
+are templated over an unsigned element-count, an unsigned integer
+value type, and a round-count (which takes a reasonable and safe
 default value).  For example:
 
      threefry<4, uint32_t>
@@ -144,30 +145,25 @@ of which are boost::arrays of the underlying value type.  I.e.,
                    domain_type = boost::array<U, N>
                    range_type  = boost::array<U, N>
    
+PRFs are keyed pseudo-random functions.  Two Prfs of the same type,
+initialized with the same key are indistinguishable and two Prfs
+initialized with different keys, even if they differ in only a single
+bit appear to be unrelated, statistically independent pseudo-random
+functions.  One can obtain apparently random output simply by
+"counting" through inputs in an perfectly regular way.  The
+counter_based_engine conceptually maps 'seeds' to Prf keys and then
+"counts" through the Prf's domain, generating random output in the
+Prf's range.  Strong empirical evidence is presented in the SC11 paper
+for the statistical quality of the threefry and philox
+functions. Among other things, threefry and philox pass the entire
+BigCrush suite of tests.
+
 For threefry and philox, initialization is extremely fast.  For other
 PRFs, e.g., the cryptographic AES function (not implemented), there
 may be non-trivial computation associated with initialization, so
-initializing PRFs is discouraged in *inner* loops, but is perfectly
+initializing PRFs isn't always appropriate in *inner* loops, but is perfectly
 reasonable at thread-scope or anywhere else that a few dozen
 invocations of the generator will amortize the initialization cost.
-
-Threefry and Philox are "pseudo-random", meaning that the outputs from
-any set of inputs are practically indistiguishable from random.  In
-particular, one can obtain apparently random output simply by
-"counting" through inputs in an entirely regular way.  Strong
-empirical evidence is presented in the SC11 paper for the statistical
-quality of the threefry and philox functions.  Furthermore, the
-pseudo-random functions obtained with different keys are shown to be
-statistically independent, even if the keys differ by only a single
-bit or follow regular patterns.  Among other things, threefry and
-philox pass the entire BigCrush suite of tests.
-
-PRFs are keyed.  Two Prfs of the same type, initialized with the same
-key are indistinguishable and two Prfs initialized with different
-keys, even if they differ in only a single bit will give rise to
-statistically independent sequences (even if they are restarted with
-the same base counter).  The counter_based_engine conceptually maps
-'seeds' to Prf keys.
 
 counter_based_engine
 --------------------
@@ -191,9 +187,9 @@ programmer to use as a 'base counter', which can be set via the
 restart(Prf::domain_type) member function, via an overloaded
 constructor, or via an overloaded seed() member function.  The base
 counter allows the program to manage practially unlimited numbers (up
-to 2^(256-CounterBits)) random sequences, each up to 2^CounterBits in
-length.  By logically associating independent random seqences with
-distinct program elements (c.f., atom.id+thread, in the example
+to 2^(256-CounterBits)) random sequences, each of length
+2^CounterBits.  By logically associating independent random seqences
+with distinct program elements (c.f., atom.id+thread, in the example
 above), it's possible to write parallel programs whose output is
 independent of thread scheduling or work assignment.
 
