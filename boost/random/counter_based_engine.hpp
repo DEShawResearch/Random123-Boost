@@ -340,7 +340,6 @@ public:
             vu.range = b(c);
             next = 0;
         }
-        //return vu.result[next++];
         return nth_result(next++);
     }
 
@@ -389,7 +388,7 @@ public:
     }
 
     void seed(key_type k, domain_type base){
-        //std::cerr << "cbe::seed(Prf, base)\n";
+        //std::cerr << "cbe::seed(key_type, base)\n";
         *this = counter_based_engine(k, base);
     }        
 
