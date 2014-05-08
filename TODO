@@ -2,23 +2,42 @@ TODO:
 ----
 o Documentation
  - the README is a start.
+
 o tests (use the Boost.Test framework)
  - the existing boost test_generator.ipp is a good start, but
    we need more:
-     + increments that wrap over multiple words and that run out
+     + increments that wrap over multiple words and that exhaust
+       the CounterBits.
      + tests of different CounterBits and verification that
        they don't overlap.
-     + verification of the compile-time arithmetic on something
-       other than x86_64.
-     + tests like test_philox2x64.cpp for other variants, or
-       some way to put more than one in a file.
+     + tests like test_philox2x64.cpp for other variants.  There
+       are a lot of possible variants.  It would be nice to find
+       a way to put more than one in a single source file.
      + concept checker for the counter_based_engine extensions,
        e.g., restart(), Engine(k), Engine(prf) etc.
+
  - test philox with and without asm mulhilo
+
+ - test the quality of the output of counter_based_engine - We know
+   from the literature that threefry and philox are Crush-resistant
+   when run in counter-mode.  And we know that the implementations
+   here match the published known-answer-tests, so threefry and philox
+   themselves are probably good.  What we don't know (without testing)
+   is that we haven't botched the counter_based_engine in some way.
+   There are plenty of opportunities for goofs, e.g., when we "carry"
+   across values in the domain_type or when we slice and dice the
+   outputs.  Some focused tests on identifiable trouple-spots, e.g.,
+   carrying, are a good idea.  But additional assurance would be
+   provided by running the output through TestU01.
+
 o portability
  - implement mulhilo for some other architecture.
  - test with other compilers? (icpc seems to work)
+
 o misc
  - a replay/decrement/rollback/backup method for counter_based_engines?
  - Jamfiles and other build infrastructure
- - really demonstrate thread-invariance in the example code (maybe C++11 std::thread)?
+ - predefined "no_margin" round-counts, so you don't have to go look
+   them up in the paper if you really want to run as fast as possible
+   but still empirically Crush-resistant.
+   

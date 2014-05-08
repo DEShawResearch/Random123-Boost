@@ -251,7 +251,6 @@ void distrib(int iter, const std::string & name, const Gen &)
 {
   Gen gen;
 
-#if 0
   timing(make_gen(gen, boost::random::uniform_int_distribution<>(-2, 4)),
          iter, name + " uniform_int");
 
@@ -276,12 +275,10 @@ void distrib(int iter, const std::string & name, const Gen &)
 
   timing(make_gen(gen, boost::random::uniform_real_distribution<>(-5.3, 4.8)),
          iter, name + " uniform_real");
-#endif
 
   timing(make_gen(gen, boost::random::uniform_01<>()),
          iter, name + " uniform_01");
 
-#if 0
   timing(make_gen(gen, boost::random::triangle_distribution<>(1, 2, 7)),
          iter, name + " triangle");
 
@@ -317,7 +314,6 @@ void distrib(int iter, const std::string & name, const Gen &)
 
   timing_sphere(make_gen(gen, boost::random::uniform_on_sphere<>(3)),
                 iter/10, name + " uniform_on_sphere");
-#endif
 }
 
 int main(int argc, char*argv[])
@@ -418,9 +414,29 @@ int main(int argc, char*argv[])
   
   distrib(iter, "lagged_fibonacci607", boost::lagged_fibonacci607());
 
-  distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t> >());
-  distrib(iter, "philox4x64", boost::random::counter_based_engine<boost::random::philox<4, uint64_t> >());
+  // An assortment of counter_based_engines with a variety of
+  // speed/space/output-type tradeoffs:
 
-  distrib(iter, "threefry4x32-12", boost::random::counter_based_engine<boost::random::threefry<4, uint32_t, 12> >());
+  // Threefry4x64, crush-resistant with a safety margin, 64-bit
+  // output.  248-bit seed space.  2^192 restartable sequences, each
+  // of length 2^66.
+  distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t> >());
+
+  // Threefry4x64/32, crush-resistant with a safety margin, 32-bit
+  // output.  248-bit seed space.  2^192 restartable sequences, each
+  // of length 2^67.
+  distrib(iter, "threefry4x64/32", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t>, 64, uint32_t>());
+
+  // Philox 2x32-7 - very small (only 6x32bits of state),
+  // crush-resistant with no safety margin.  26-bit seed space.
+  // Reasonably fast (50-75% of mersenne), with 2^32 restart()-able
+  // sequences each with a length of 2^33.
   distrib(iter, "philox2x32-7", boost::random::counter_based_engine<boost::random::philox<2, uint32_t, 7> >());
+
+  // Threefry4x64, crush-resistant but with no safety margin.  248-bit
+  // seed space.  This should be the fastest.  As fast as
+  // mersenne19937, but much smaller (13x64bits), with better or equal
+  // quality.  2^192 restartable sequences each of length 2^67
+  distrib(iter, "threefry4x64-12/32", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t, 12>, 64, uint32_t>());
+
 }

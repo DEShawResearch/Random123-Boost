@@ -40,10 +40,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/random/detail/operators.hpp>
 #include <boost/random/detail/seed.hpp>
 #include <boost/random/detail/integer_log2.hpp> // for BOOST_RANDOM_DETAIL_CONSTEXPR
+#include <boost/integer/static_min_max.hpp>
+#include <boost/integer/integer_mask.hpp>
 
 #include <iosfwd>
 #include <utility>
 #include <stdexcept>
+#include <algorithm>
+#include <limits>
 
 #undef BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR
 #define BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(Self, SeedSeq, seq)    \
@@ -54,11 +58,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace boost{
 namespace random{
 
-template<typename Prf, unsigned CtrBits = Prf::range_bits/2>
+template<typename Prf, 
+         unsigned CtrBits = static_unsigned_min<64u, Prf::range_bits/2>::value,
+         typename UintType = typename Prf::range_type::value_type, 
+         unsigned w = std::numeric_limits<UintType>::digits>
 struct counter_based_engine {
     typedef Prf prf_type;
+    typedef UintType result_type;
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
-    typedef typename Prf::range_type::value_type result_type;
 
 protected:
     typedef typename Prf::range_type range_type;
@@ -69,28 +76,67 @@ protected:
     BOOST_STATIC_ASSERT(CtrBits <= dvalue_bits*Prf::Ndomain);
     BOOST_STATIC_ASSERT(CtrBits > 0);
     BOOST_STATIC_CONSTANT(unsigned, incr_idx = (Prf::Ndomain*dvalue_bits - CtrBits)/dvalue_bits);
-    BOOST_STATIC_ASSERT(incr_idx < Prf::Ndomain);
     BOOST_STATIC_CONSTANT(dvalue_type, incr_stride = dvalue_type(1)<<((Prf::Ndomain*dvalue_bits - CtrBits)%dvalue_bits));
     BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = CtrBits/dvalue_bits);
 
     typedef typename key_type::value_type kvalue_type;
     BOOST_STATIC_CONSTANT(unsigned, kvalue_bits = std::numeric_limits<kvalue_type>::digits);
 
+    BOOST_STATIC_ASSERT( std::numeric_limits<UintType>::digits >= w );
+    BOOST_STATIC_ASSERT( Prf::range_bits%w == 0 );
+    BOOST_STATIC_CONSTANT(unsigned, Nresult = Prf::range_bits/w);
+
     prf_type b;
     domain_type c;
-    range_type v;
+    union{
+        range_type range;
+        boost::array<result_type, Nresult> endian_dependent_result;
+    } vu;
     unsigned next;
 
+    result_type nth_result(unsigned n){
+#if 0
+        // The results in this branch JUST AS RANDOM as the other
+        // branch, BUT if w!=rvalue_bits, the numerical output values
+        // will be bit-swizzled in an ENDIAN-DEPENDENT way.  If your
+        // compiler doesn't do constant-propagation well, this branch
+        // may be a lot faster.  Use it if you prefer to give up
+        // endian-independence for the added speed.
+        BOOST_STATIC_ASSERT( sizeof(vu.range) == sizeof(vu.endian_dependent_result) );
+        return vu.endian_dependent_result[n];
+#else
+        const unsigned rvalue_bits = Prf::range_bits/Prf::Nrange;
+        result_type r;
+        if( w == rvalue_bits ){
+            return vu.range[n];
+        }else if( w < rvalue_bits ){
+            const unsigned  results_per_rangeval = rvalue_bits/w;
+            const unsigned idx = n/results_per_rangeval;
+            const unsigned shift = (n%results_per_rangeval)*w;
+            const typename range_type::value_type r = vu.range[ idx ];
+            const result_type wmask = low_bits_mask_t<w>::sig_bits;
+            return (r >> shift)*wmask;
+        }else{
+            unsigned idx = (n*w)/rvalue_bits;
+            r = vu.range[idx++];
+            for(int i=1; i<w/rvalue_bits; ++i){
+                r = (r<<w) | vu.range[idx++];
+            }
+            return r;
+        }
+#endif
+    }
+            
     void setnext(unsigned n){
-        if( n != Prf::Nrange ){
-            v = b(c);
+        if( n != Nresult ){
+            vu.range = b(c);
         }
         next = n;
     }        
 
     void incr(){
         typename domain_type::reverse_iterator p = c.rbegin();
-        for(unsigned w=0; w<FullCtrWords; ++w){
+        for(unsigned i=0; i<FullCtrWords; ++i){
             *p += 1;
             if(*p++)
                 return;
@@ -103,7 +149,7 @@ protected:
 
     void incr(boost::uintmax_t n){
         typename domain_type::reverse_iterator p = c.rbegin();
-        for(unsigned w=0; w<FullCtrWords; ++w){
+        for(unsigned i=0; i<FullCtrWords; ++i){
             *p += dvalue_type(n);
             n >>= dvalue_bits-1; n>>=1;
             if(*p++ == 0)
@@ -120,7 +166,7 @@ protected:
 
     void initialize(){
         c.fill(0);
-        next = Prf::Nrange;
+        next = Nresult;
     }
 
     void chk_highbasebits(domain_type c){
@@ -202,18 +248,18 @@ public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return std::numeric_limits<dvalue_type>::max(); }
 
     counter_based_engine()
-        : b(), c(), v(), next(Prf::Nrange)
+        : b(), c(), next(Nresult)
     {
         initialize();
         //std::cerr << "cbe()\n";
     }
 
-    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Prf::Nrange){
+    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Nresult){
         //std::cerr << "cbe(counter_based_engine&)\n";
         setnext(e.next);
     }
 
-    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Prf::Nrange){
+    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Nresult){
         //std::cerr << "cbe(const counter_based_engine&)\n";
         setnext(e.next);
     }
@@ -299,19 +345,20 @@ public:
     }
 
     result_type operator()(){
-        if( next == Prf::Nrange ){
+        if( next == Nresult ){
             incr();
-            v = b(c);
+            vu.range = b(c);
             next = 0;
         }
-        return v[next++];
+        //return vu.result[next++];
+        return nth_result(next++);
     }
 
     void discard(boost::uintmax_t skip){
-	size_t newnext = next + (skip % Prf::Nrange);
-        skip /= Prf::Nrange;
-        if (newnext > Prf::Nrange) {
-            newnext -= Prf::Nrange;
+	size_t newnext = next + (skip % Nresult);
+        skip /= Nresult;
+        if (newnext > Nresult) {
+            newnext -= Nresult;
 	    skip++;
         }
         incr(skip);
@@ -335,7 +382,7 @@ public:
     void restart(domain_type start){ 
         chk_highbasebits(start);
         c = start;
-        next = Prf::Nrange;
+        next = Nresult;
     }
 
     // Constructor and seed() method to construct or re-seed a
@@ -343,11 +390,11 @@ public:
     // counter.  It's an error to specify a key with high bits set
     // because the high bits are reserved for use by the engine to
     // disambiguate engines created with different CounterBits.
-    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(chk_highkeybits(k)), c(base), next(Prf::Nrange){
+    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(chk_highkeybits(k)), c(base), next(Nresult){
         chk_highbasebits(base);
     }
 
-    explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Prf::Nrange){
+    explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
         chk_highbasebits(base);
     }
