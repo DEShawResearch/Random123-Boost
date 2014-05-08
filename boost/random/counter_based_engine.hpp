@@ -32,28 +32,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef BOOST_RANDOM_COUNTER_BASED_ENGINE_HPP
 #define BOOST_RANDOM_COUNTER_BASED_ENGINE_HPP
 
-#include <boost/utility/enable_if.hpp>
-#include <boost/type_traits/is_convertible.hpp>
+#include <boost/array.hpp>
 #include <boost/cstdint.hpp>
+#include <boost/integer/integer_mask.hpp>
 #include <boost/random/seed_seq.hpp>
+#include <boost/random/detail/seed.hpp>
 #include <boost/random/detail/seed_impl.hpp>
 #include <boost/random/detail/operators.hpp>
-#include <boost/random/detail/seed.hpp>
 #include <boost/random/detail/integer_log2.hpp>
 #include <boost/integer/static_min_max.hpp>
-#include <boost/integer/integer_mask.hpp>
 
 #include <iosfwd>
 #include <utility>
 #include <stdexcept>
 #include <algorithm>
 #include <limits>
-
-#undef BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR
-#define BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(Self, SeedSeq, seq)    \
-    template<class SeedSeq>                                             \
-    explicit Self(SeedSeq& seq, typename ::boost::random::detail::disable_seed<SeedSeq>::type* = 0)
-
 
 namespace boost{
 namespace random{
@@ -96,7 +89,7 @@ protected:
 
     result_type nth_result(unsigned n){
 #if 0
-        // The results in this branch JUST AS RANDOM as the other
+        // The results in this branch are JUST AS RANDOM as the other
         // branch, BUT if w!=rvalue_bits, the numerical output values
         // will be bit-swizzled in an ENDIAN-DEPENDENT way.  If your
         // compiler doesn't do constant-propagation well, this branch
@@ -366,12 +359,11 @@ public:
     void generate(Iter first, Iter last)
     { detail::generate_from_int(*this, first, last); }
 
-    // The member functions functions below *extend* the standard
-    // Random Number Engine concept.  They provide the ability to
-    // quickly 'restart' the engine with a new 'base counter'.
-    // Restart is very fast, and restarted engines will produce
-    // independent sequences as long as thier 'base counters'
-    // differ in at least one bit.
+    // The member functions below *extend* the standard Random Number
+    // Engine concept.  They provide the ability to quickly 'restart'
+    // the engine with a new 'base counter'.  Restart is very fast,
+    // and restarted engines will produce independent sequences as
+    // long as thier 'base counters' differ in at least one bit.
 
     // restart - restart the counter with a new 'base counter' without
     //  touching the Prf or its key.  The counter is reset so there
