@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/random/detail/seed_impl.hpp>
 #include <boost/random/detail/operators.hpp>
 #include <boost/random/detail/seed.hpp>
-#include <boost/random/detail/integer_log2.hpp> // for BOOST_RANDOM_DETAIL_CONSTEXPR
+#include <boost/random/detail/integer_log2.hpp>
 #include <boost/integer/static_min_max.hpp>
 #include <boost/integer/integer_mask.hpp>
 
@@ -192,13 +192,9 @@ protected:
 
     template <typename SeedSeq>
     key_type key_from_seedseq(SeedSeq& seq){
-        BOOST_STATIC_ASSERT( (Prf::Nkey * kvalue_bits) % 32 == 0 );
-        BOOST_STATIC_CONSTANT(unsigned, Nk32 = (Prf::Nkey * kvalue_bits) / 32);
-        BOOST_STATIC_ASSERT( Nk32 > 0 );
-        uint32_t a[Nk32];
-        uint32_t *p = &a[0];
-        seq.generate(p, p+Nk32);
-        return key_from_range(p, p+Nk32);
+        key_type ret;
+        detail::seed_array_int<kvalue_bits>(seq, ret.elems);
+        return ret;
     }
 
     template <typename It>
@@ -250,6 +246,7 @@ public:
     counter_based_engine()
         : b(), c(), next(Nresult)
     {
+        vu.range.fill(0); // NOT logically necessary.  Silences a spurious gcc warning.
         initialize();
         //std::cerr << "cbe()\n";
     }
