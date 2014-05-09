@@ -14,6 +14,7 @@
 # garden load \
 #   make/3.81-11A/bin \
 #   gcc/4.8.2-27B/bin \
+#   TestU01/1.2.3-02A/lib \
 #   boost/1_55_0-30A/Release/lib
 #
 # # Uncomment these lines to use icpc

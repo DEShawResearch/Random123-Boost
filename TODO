@@ -30,6 +30,14 @@ o tests (use the Boost.Test framework)
    carrying, are a good idea.  But additional assurance would be
    provided by running the output through TestU01.
 
+    + May 8, 2014 - ran test of:
+       counter_based_engine<threefry<4, uint64_t, 12>, 64, uint32_t> engine;
+      with bigcrush.  The good news is that it passed all the tests.
+      See tests/bigcrush.out.
+      That's definitely reassuring.  A few more tests would be nice.
+      (They might go faster if we read from stdin and used a separate
+      process to generate the randoms)
+
 o portability
  - implement mulhilo for some other architecture.
  - test with other compilers? (icpc seems to work)
