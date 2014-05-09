@@ -17,6 +17,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/random/threefry.hpp>
 #include <boost/random/philox.hpp>
+#include <boost/random/sha1_prf.hpp>
 #include <boost/random/counter_based_engine.hpp>
 
 /*
@@ -392,6 +393,8 @@ int main(int argc, char*argv[])
   run(iter, "philox2x64", boost::random::counter_based_engine< boost::random::philox<2, uint64_t> >());
   run(iter, "philox4x32", boost::random::counter_based_engine< boost::random::philox<4, uint32_t> >());
   run(iter, "philox2x32", boost::random::counter_based_engine< boost::random::philox<2, uint32_t> >());
+
+  run(iter, "sha1<>", boost::random::counter_based_engine<boost::random::sha1_prf<> >());
 
   run(iter, "counting", counting());
 
