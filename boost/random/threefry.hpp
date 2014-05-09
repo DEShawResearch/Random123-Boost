@@ -130,7 +130,7 @@ private:
         Uint* ks;
         _roundapplyer(_ctr_type& _c, Uint* _ks) : c(_c), ks(_ks){}
         void operator()(unsigned r){
-            c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
+            c[0] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
             unsigned rplus = r+1;
             if((rplus&3)==0){
                 unsigned r4 = rplus>>2;
@@ -155,7 +155,7 @@ public:
         return c;
 #else
         for(unsigned r=0; r<R; ){
-            c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
+            c[0] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
             ++r;
             if((r&3)==0){
                 unsigned r4 = r>>2;
@@ -181,11 +181,11 @@ private:
         _roundapplyer(_ctr_type& _c, Uint* _ks) : c(_c), ks(_ks){}
         void operator()(unsigned r){
             if((r&1)==0){
-                c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
-                c[2] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
+                c[0] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
+                c[2] += c[3]; c[3] = detail::rotl64(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
             }else{
-                c[0] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
-                c[2] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
+                c[0] += c[3]; c[3] = detail::rotl64(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
+                c[2] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
             }
             ++r;
             if((r&3)==0){
@@ -218,11 +218,11 @@ public:
 #else
         for(unsigned r=0; r<R; ){
             if((r&1)==0){
-                c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
-                c[2] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
+                c[0] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
+                c[2] += c[3]; c[3] = detail::rotl64(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
             }else{
-                c[0] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
-                c[2] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
+                c[0] += c[3]; c[3] = detail::rotl64(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
+                c[2] += c[1]; c[1] = detail::rotl64(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
             }
             ++r;
             if((r&3)==0){
