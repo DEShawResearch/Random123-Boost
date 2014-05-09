@@ -35,9 +35,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace boost{
 namespace random{
 namespace detail{
-template <typename Uint, unsigned w>
-static Uint rotl(Uint x, unsigned s){
-    return (x<<s) | (x>>(w-s));
+template <typename Uint>
+static Uint rotl64(Uint x, unsigned s){
+    return (x<<s) | (x>>(64-s));
 }
 }
 }
