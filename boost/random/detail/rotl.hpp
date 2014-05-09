@@ -36,8 +36,8 @@ namespace boost{
 namespace random{
 namespace detail{
 template <typename Uint>
-static Uint rotl(Uint x, unsigned s){
-    return (x<<s) | (x>>(std::numeric_limits<Uint>::digits-s));
+static Uint rotl64(Uint x, unsigned s){
+    return (x<<s) | (x>>(64-s));
 }
 }
 }
