@@ -48,11 +48,11 @@ namespace random{
 //   Thus, it can be used with counter_based_engine to provide a slow
 //   but extremely high-quality random number generator.  E.g.,
 //
-//     counter_based_engine<sha1_prf<4,1> > 
+//     counter_based_engine<sha1_prf<4,2> > 
 //
 //   The template parameter, Ndomain and Nkey specify how many 32-bit
 //   words to assign to the Pseudo-random function's domain and key.
-//   They have default values of 4 and 1.
+//   They have default values of 4 and 2.
 //
 //   Speed: random_speed.cpp reports that it's about 50x slower than
 //   fast generators like mersenne or threefry4x64.  On the other
@@ -65,20 +65,24 @@ namespace random{
 //   surprise to the cryptography community and have huge implications
 //   for computer security.
 
-template <unsigned Ndomain=4, unsigned Nkey=1>
+template <unsigned Ndomain=4, unsigned Nkey=2>
 class sha1_prf : public detail::prf_common<Ndomain, 5, Nkey, uint32_t>{
     typedef detail::prf_common<Ndomain, 5, Nkey, uint32_t> common_type;
     typedef typename common_type::domain_type _domain_type;
     typedef typename common_type::range_type _range_type;
     typedef typename common_type::key_type _key_type;
 
-    // Calling h.process_bytes(c.data(), Ndomain*sizeof(uint32_t))
-    // would be endian-dependent.  So we do this instead:
-    void process_u32(uuids::detail::sha1& h, uint32_t v){
-        h.process_byte((v    )&0xff);
-        h.process_byte((v>> 8)&0xff);
-        h.process_byte((v>>16)&0xff);
+    // SHA-1 is spec'ed in terms of 32-bit, big-endian words.
+    // But uuids::detail::sha1 only has byte-oriented input
+    // functions that would be endian-sensitive if we passed
+    // the address of c.data() or k.data() to them.  So
+    // we define a uint32 input function to eliminate the
+    // endian-sensitivity.
+    static void process_u32(uuids::detail::sha1& h, uint32_t v){
         h.process_byte((v>>24)&0xff);
+        h.process_byte((v>>16)&0xff);
+        h.process_byte((v>> 8)&0xff);
+        h.process_byte((v    )&0xff);
     }
     
 public:
@@ -86,6 +90,11 @@ public:
 
     _range_type operator()(_domain_type c){
         boost::uuids::detail::sha1 h;
+        // salt with Nkey to disambiguate sha1_prf<Ndomain1,Nkey1>
+        // from sha1_prf<Nkdomain2,Nkey2> when
+        //   Ndomain1+Nkey1 == Nkdomain2+Nkey2
+        BOOST_STATIC_ASSERT(uint8_t(Nkey) == Nkey);
+        h.process_byte(Nkey);  
         for(int i=0; i<Nkey; ++i)
             process_u32(h, this->k[i]);
         for(int i=0; i<Ndomain; ++i)

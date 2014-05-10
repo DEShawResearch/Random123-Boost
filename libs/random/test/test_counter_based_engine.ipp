@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/counter_based_engine.hpp>
+#include <boost/limits.hpp>
 
 typedef boost::random::counter_based_engine<BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_COUNTER_BASED_ENGINE_CTRBITS> engine_t;
 

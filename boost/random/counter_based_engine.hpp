@@ -34,19 +34,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/array.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/integer/integer_mask.hpp>
+#include <boost/limits.hpp>
 #include <boost/random/seed_seq.hpp>
 #include <boost/random/detail/seed.hpp>
 #include <boost/random/detail/seed_impl.hpp>
 #include <boost/random/detail/operators.hpp>
-#include <boost/random/detail/integer_log2.hpp>
 #include <boost/integer/static_min_max.hpp>
+#include <boost/integer/static_log2.hpp>
+#include <boost/integer/integer_mask.hpp>
 
 #include <iosfwd>
 #include <utility>
 #include <stdexcept>
 #include <algorithm>
-#include <limits>
 
 namespace boost{
 namespace random{
@@ -67,6 +67,9 @@ protected:
     typedef typename Prf::domain_type domain_type;
     typedef typename Prf::key_type key_type;
     typedef typename domain_type::value_type dvalue_type;
+    BOOST_STATIC_ASSERT(std::numeric_limits<dvalue_type>::is_modulo);
+    BOOST_STATIC_ASSERT(!std::numeric_limits<dvalue_type>::is_signed);
+
     BOOST_STATIC_CONSTANT(unsigned, dvalue_bits = std::numeric_limits<dvalue_type>::digits);
     BOOST_STATIC_ASSERT(CtrBits <= dvalue_bits*Prf::Ndomain);
     BOOST_STATIC_ASSERT(CtrBits > 0);
@@ -80,6 +83,10 @@ protected:
     BOOST_STATIC_ASSERT( std::numeric_limits<UintType>::digits >= w );
     BOOST_STATIC_ASSERT( Prf::range_bits%w == 0 );
     BOOST_STATIC_CONSTANT(unsigned, Nresult = Prf::range_bits/w);
+
+    BOOST_STATIC_CONSTANT(unsigned, CtrBitsBits = static_log2<Prf::Ndomain*dvalue_bits>::value);
+    BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
+    BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = low_bits_mask_t<kvalue_bits-CtrBitsBits>::sig_bits );
 
     prf_type b;
     domain_type c;
@@ -153,11 +160,14 @@ protected:
             if(n==0)
                 return;
         }
-        // FIXME - these don't test overflow correctly!!
-        *p += n*incr_stride;
-        if(*p >= incr_stride)
+        // ??? - does this correctly detect all the overflow cases ???
+        if(n==0)
             return;
-        BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
+        if(n*incr_stride < incr_stride)
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
+        *p += n*incr_stride;
+        if(*p < incr_stride)
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
     }
 
     void initialize(){
@@ -216,20 +226,16 @@ protected:
     //  are 0.  If they're not, throw an out_of_range exception.  If
     //  they are, then call set_highkeybits.
     key_type chk_highkeybits(key_type k){
-        const unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
-        //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
-        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
-        if( k[Prf::Nkey-1] & ~CtrBitsMask )
+        if( k[Prf::Nkey-1] & ~CtrBitsMask ){
+            //std::cerr << "k[Nkey-1] = " << std::hex <<  k[Prf::Nkey-1] << std::dec << std::endl;
             BOOST_THROW_EXCEPTION(std::domain_error("high bits of key are reserved for internal use by counter_based_engine"));
+        }
         return set_highkeybits(k);
     }
 
     // set_highkeybits - set the high CtrBitsBits of k to CtrBits-1,
     //  regardless of their original contents.
     key_type set_highkeybits(key_type k){
-        const unsigned CtrBitsBits = detail::integer_log2(Prf::Ndomain*dvalue_bits);
-        //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
-        BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
         k[Prf::Nkey-1] &= CtrBitsMask;
         k[Prf::Nkey-1] |= kvalue_type(CtrBits-1)<<(kvalue_bits - CtrBitsBits);
         return k;
@@ -237,7 +243,7 @@ protected:
 
 public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () { return 0; }
-    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return std::numeric_limits<dvalue_type>::max(); }
+    BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return low_bits_mask_t<w>::sig_bits; }
 
     counter_based_engine()
         : b(), c(), next(Nresult)
