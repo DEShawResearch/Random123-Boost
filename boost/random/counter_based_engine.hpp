@@ -58,6 +58,8 @@ template<typename Prf,
 struct counter_based_engine {
     typedef Prf prf_type;
     typedef UintType result_type;
+    BOOST_STATIC_CONSTANT(unsigned, counter_bits = CtrBits);
+    BOOST_STATIC_CONSTANT(unsigned, word_size = w);
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
 
 protected:
