@@ -33,9 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef BOOST_RANDOM_SHA1_PRF_HPP
 #define BOOST_RANDOM_SHA1_PRF_HPP
 
+#include <boost/random/detail/prf_common.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/array.hpp>
 #include <boost/uuid/sha1.hpp>
+#include <boost/cstdint.hpp>
 
 namespace boost{
 namespace random{
@@ -69,21 +71,29 @@ class sha1_prf : public detail::prf_common<Ndomain, 5, Nkey, uint32_t>{
     typedef typename common_type::domain_type _domain_type;
     typedef typename common_type::range_type _range_type;
     typedef typename common_type::key_type _key_type;
+
+    // Calling h.process_bytes(c.data(), Ndomain*sizeof(uint32_t))
+    // would be endian-dependent.  So we do this instead:
+    void process_u32(uuids::detail::sha1& h, uint32_t v){
+        h.process_byte((v    )&0xff);
+        h.process_byte((v>> 8)&0xff);
+        h.process_byte((v>>16)&0xff);
+        h.process_byte((v>>24)&0xff);
+    }
+    
 public:
-    sha1_prf(_key_type k=_key_type()) : key(k){}
-    sha1_prf(const sha1_prf& rhs) : key(rhs.key){}
+    sha1_prf(_key_type _k=_key_type()) : common_type(_k){}
 
     _range_type operator()(_domain_type c){
         boost::uuids::detail::sha1 h;
-        h.process_bytes(key.data(), Nkey*sizeof(uint32_t));
-        h.process_bytes(c.data(), Ndomain*sizeof(uint32_t));
+        for(int i=0; i<Nkey; ++i)
+            process_u32(h, this->k[i]);
+        for(int i=0; i<Ndomain; ++i)
+            process_u32(h, c[i]);
         _range_type ret;
         h.get_digest(ret.elems);
         return ret;
     }
-
-protected:
-    _key_type key;
 };
 
 } // namespace random

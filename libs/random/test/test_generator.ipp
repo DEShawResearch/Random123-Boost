@@ -83,8 +83,11 @@ BOOST_AUTO_TEST_CASE(test_arithmetic_seed)
 {
     test_seed(static_cast<seed_type>(0));
     test_seed(static_cast<seed_type>(127));
-    test_seed(static_cast<seed_type>(539157235));
-    test_seed(static_cast<seed_type>(~0u));
+#ifndef BOOST_RANDOM_SEED_MASK
+#define BOOST_RANDOM_SEED_MASK (~0u)
+#endif
+    test_seed(static_cast<seed_type>(539157235 & BOOST_RANDOM_SEED_MASK));
+    test_seed(static_cast<seed_type>(~0u & BOOST_RANDOM_SEED_MASK));
 }
    
 BOOST_AUTO_TEST_CASE(test_iterator_seed)

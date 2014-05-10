@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/random/detail/operators.hpp>
 #include <boost/random/detail/seed.hpp>
+#include <boost/array.hpp>
+#include <limits>
 
 namespace boost{
 namespace random{

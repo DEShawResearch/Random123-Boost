@@ -43,31 +43,42 @@ typedef boost::random::counter_based_engine<BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_
 // counter-based engines can do discards in O(1) time.  Let's
 // check that many such "random" discards add up correctly.
 void do_test_huge_discard(boost::uintmax_t bigjump){
+    BOOST_RANDOM_URNG urng0;
     BOOST_RANDOM_URNG urng;
     BOOST_RANDOM_URNG urng2;
     BOOST_RANDOM_URNG urng3;
+    BOOST_RANDOM_URNG urngn;
 
     BOOST_CHECK_EQUAL(urng, urng2);
     boost::uintmax_t n = 0;
+    bool out_of_bits1 = false;
+    bool out_of_bitsn = false;
     try{
         urng2.discard(bigjump);
-    }catch(std::out_of_range&){
+    }catch(std::domain_error&){
         // It's ok if bigjump exceeds our sequence length.
         // It just means that we are testing a counter_based_engine
         // with a small-ish number of CounterBits.
-        //
-        // FIXME - check this with some arithmetic on bigjump and
-        // BOOST_COUNTER_BASED_ENGINE_CTRBITS
-        return;
+        out_of_bits1 = true;
     }
-    while(n < bigjump){
-        BOOST_CHECK_NE(urng, urng2);
-        boost::random::uniform_int_distribution<boost::uintmax_t> d(1, 1+(bigjump-n)/73);;
-        boost::uintmax_t smalljump = d(urng3);
-        urng.discard(smalljump);
-        n += smalljump;
+    try{
+        while(n < bigjump){
+            if(!out_of_bits1)
+                BOOST_CHECK_NE(urng, urng2);
+            boost::random::uniform_int_distribution<boost::uintmax_t> d(1, 1+(bigjump-n)/73);;
+            boost::uintmax_t smalljump = d(urng3);
+            urng.discard(smalljump);
+            n += smalljump;
+            urngn = urng0;
+            urngn.discard(n);
+            BOOST_CHECK_EQUAL(urng, urngn);
+        }
+    }catch(std::domain_error&){
+        out_of_bitsn = true;
     }
-    BOOST_CHECK_EQUAL(urng, urng2);
+    BOOST_CHECK_EQUAL(out_of_bits1, out_of_bitsn);
+    if(!out_of_bits1)
+        BOOST_CHECK_EQUAL(urng, urng2);
 }
 
 BOOST_AUTO_TEST_CASE(test_huge_discard)

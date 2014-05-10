@@ -137,15 +137,16 @@ protected:
         *p += incr_stride;
         if(*p >= incr_stride)
             return;
-        throw std::out_of_range("counter_based_engine::incr(): ran out of counters");
+        BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
     }
 
     void incr(boost::uintmax_t n){
         typename domain_type::reverse_iterator p = c.rbegin();
         for(unsigned i=0; i<FullCtrWords; ++i){
             *p += dvalue_type(n);
+            bool carry = (*p++ < dvalue_type(n));
             n >>= dvalue_bits-1; n>>=1;
-            if(*p++ == 0)
+            if(carry)
                 n++;
             if(n==0)
                 return;
@@ -154,7 +155,7 @@ protected:
         *p += n*incr_stride;
         if(*p >= incr_stride)
             return;
-        throw std::out_of_range("counter_based_engine::incr(): ran out of counters");
+        BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
     }
 
     void initialize(){
@@ -170,7 +171,7 @@ protected:
         for( ; p != c.end(); ++p)
             if(*p) bad = true;
         if(bad)
-            throw std::out_of_range("Initial value of counter_based_engine's counter is too large");
+            BOOST_THROW_EXCEPTION(std::domain_error("Initial value of counter_based_engine's counter is too large"));
     }
 
     // key_from_{value,range,seedseq} - construct a key from the
@@ -217,7 +218,7 @@ protected:
         //BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
         BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = (~kvalue_type(0))>> CtrBitsBits );
         if( k[Prf::Nkey-1] & ~CtrBitsMask )
-            throw std::out_of_range("high bits of key are reserved for internal use by counter_based_engine");
+            BOOST_THROW_EXCEPTION(std::domain_error("high bits of key are reserved for internal use by counter_based_engine"));
         return set_highkeybits(k);
     }
 
