@@ -197,7 +197,7 @@ public:
     }
 
     BOOST_RANDOM_DETAIL_EQUALITY_OPERATOR(counter_based_engine, lhs, rhs){ 
-        return lhs.c==rhs.c && 
+        return DomainTraits::is_equal(lhs.c, rhs.c) && 
             lhs.next == rhs.next && 
             lhs.b == rhs.b; 
     }
@@ -206,19 +206,23 @@ public:
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, counter_based_engine, f){
         os << (f.next) << ' ';
-        DomainTraits::insert(os, f.c);
+        DomainTraits::insert(os, f.c) << ' ';
         KeyTraits::insert(os,  f.b.getkey());
         return os;
     }
 
     BOOST_RANDOM_DETAIL_ISTREAM_OPERATOR(is, counter_based_engine, f){
-        size_t n;
-        is >> n;
-        DomainTraits::extract(is, f.c);
-        key_type k;
-        KeyTraits::extract(is, k);
-        f.b.setkey(k);
-        f.setnext(n);
+        unsigned newnext;
+        is >> newnext;
+        domain_type newc;
+        DomainTraits::extract(is, newc);
+        key_type newk;
+        KeyTraits::extract(is, newk);
+        if( !is )
+            return is;
+        f.c = newc;
+        f.b.setkey(newk);
+        f.setnext(newnext);
         return is;
     }
 
@@ -256,7 +260,9 @@ public:
     //  touching the Prf or its key.  The counter is reset so there
     //  are again 2^CtrBits counters available.
     void restart(domain_type start){ 
-        DomainTraits::template chk_highbits<CtrBits>(start);
+        if( DomainTraits::template clr_highbits<CtrBits>(start) )
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine:: high bits of key are reserved for internal use."));
+            
         c = start;
         next = Nresult;
     }
@@ -267,13 +273,15 @@ public:
     // because the high bits are reserved for use by the engine to
     // disambiguate engines created with different CounterBits.
     explicit counter_based_engine(key_type k, domain_type base = domain_type()) : 
-        b(chk_highbits(k)), c(base), next(Nresult){
-        DomainTraits::template clr_bits<CtrBits>(base);
+        b(chk_highkeybits(k)), c(base), next(Nresult){
+        if( DomainTraits::template clr_highbits<CtrBits>(base) )
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine restart value overlaps with counter bits"));
     }
 
     explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
-        DomainTraits::chk_highbasebits<CtrBits>(base);
+        if( DomainTraits::clr_highbits<CtrBits>(base) )
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine restart value overlaps with counter bits"));
     }
 
     void seed(key_type k, domain_type base){

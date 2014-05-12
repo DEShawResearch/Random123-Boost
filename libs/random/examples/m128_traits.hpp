@@ -46,16 +46,16 @@ namespace boost{
 namespace random{
 namespace detail{
 
+// This is a SKETCH of a possible specialization of the
+// counter_traits<__m128i> for the Intel SSE __m128i data type.  It's
+// only complete enough to demonstrate a hardware-specific
+// implementation of the ARS generator in ars_example.cpp.  IT IS NOT
+// WELL TESTED AND HAS KNOWN DEFECTS (e.g., overflows and carries are
+// not detected in incr()!!).  
+
 template<>
 struct counter_traits<__m128i>{
-#if 0
-    BOOST_RANDOM_DETAIL_EQUALITY_OPERATOR(m128prf_common, lhs, rhs){ 
-        return 0xf==_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(lhs.k, rhs.k)));
-    }
-
-    BOOST_RANDOM_DETAIL_INEQUALITY_OPERATOR(m128prf_common)
-#endif
-
+    typedef uint32_t preferred_result_type;
     BOOST_STATIC_CONSTANT(unsigned, Nbits = 128u);
 
     template<class CharT, class Traits>
@@ -76,8 +76,8 @@ struct counter_traits<__m128i>{
         return is;
     }
 
-    template <unsigned CtrBits>
-    static void chk_highbits(__m128i c){
+    static bool is_equal(const __m128i& rhs, const __m128i& lhs){
+        return 0xf==_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(lhs, rhs)));
     }
 
     // key_from_{value,range,seedseq} - construct a key from the
@@ -119,27 +119,15 @@ struct counter_traits<__m128i>{
     // chk_highkeybits - first check that the high CtrBitsBits of k
     //  are 0.  If they're not, throw an out_of_range exception.  If
     //  they are, then call set_highkeybits.
-    template<unsigned CtrBits, unsigned CtrBitsBits>
-    static __m128i chk_highkeybits(__m128i k){
+    template<unsigned CtrBitsBits>
+    static bool clr_highbits(__m128i& k){
         BOOST_STATIC_ASSERT(CtrBitsBits <= 32);
         BOOST_STATIC_CONSTANT(uint32_t, CtrBitsMask = low_bits_mask_t<32-CtrBitsBits>::sig_bits );
         uint32_t k3 = _mm_extract_epi32(k, 3);
-        if( k3 & ~CtrBitsMask ){
-            //std::cerr << "k[Nkey-1] = " << std::hex <<  k[Prf::Nkey-1] << std::dec << std::endl;
-            BOOST_THROW_EXCEPTION(std::domain_error("high bits of key are reserved for internal use by counter_based_engine"));
-        }
-        return set_highkeybits<CtrBits, CtrBitsBits>(k);
-    }
-
-    // set_highkeybits - set the high CtrBitsBits of k to CtrBits-1,
-    //  regardless of their original contents.
-    template<unsigned CtrBits, unsigned CtrBitsBits>
-    static __m128i set_highkeybits(__m128i k){
-        BOOST_STATIC_ASSERT(CtrBitsBits <= 32);
-        BOOST_STATIC_CONSTANT(uint32_t, CtrBitsMask = low_bits_mask_t<32-CtrBitsBits>::sig_bits );
-        __m128i mask = _mm_set_epi32(CtrBitsMask, 0, 0, 0);
-        k = _mm_and_si128(k, mask);
-        return _mm_or_si128(k, _mm_set_epi32(CtrBits-1, 0, 0, 0));
+        bool ret = !!( k3 & ~CtrBitsMask );
+        k3 &= CtrBitsMask;
+        k = _mm_insert_epi32(k, k3, 3);
+        return ret;
     }
 
     template <unsigned CtrBits>
@@ -162,14 +150,23 @@ struct counter_traits<__m128i>{
 
     template <typename result_type, unsigned w>
     static result_type nth_result(unsigned n, __m128i v){
-        BOOST_STATIC_ASSERT(w==32);
-        switch(n){
-        case 0: return _mm_extract_epi32(v, 0);
-        case 1: return _mm_extract_epi32(v, 1);
-        case 2: return _mm_extract_epi32(v, 2);
-        case 3: return _mm_extract_epi32(v, 3);
+        BOOST_STATIC_ASSERT(w==32 || w==64);
+        switch(w){
+        case 32:
+            switch(n){
+            case 0: return _mm_extract_epi32(v, 0);
+            case 1: return _mm_extract_epi32(v, 1);
+            case 2: return _mm_extract_epi32(v, 2);
+            case 3: return _mm_extract_epi32(v, 3);
+            }
+            BOOST_THROW_EXCEPTION(std::out_of_range("nth_result(n)"));
+        case 64:
+            switch(n){
+            case 0: return _mm_extract_epi64(v, 0);
+            case 1: return _mm_extract_epi64(v, 1);
+            }
+            BOOST_THROW_EXCEPTION(std::out_of_range("nth_result(n)"));
         }
-        BOOST_THROW_EXCEPTION(std::out_of_range("nth_result(n)"));
     }
 };
 

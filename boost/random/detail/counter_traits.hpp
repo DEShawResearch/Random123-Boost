@@ -84,6 +84,8 @@ struct counter_traits{
     template<class CharT, class Traits>
     static std::basic_istream<CharT, Traits>& extract(std::basic_istream<CharT, Traits>& is, CtrType& a);
 
+    static bool is_equal(const CtrType& rhs, const CtrType& lhs);
+
     // key_from_{value,range,seedseq} - construct a key from the
     //   argument.  These functions make no effort to check or set the
     //   high bits of the key.  They should be passed through either
@@ -179,6 +181,10 @@ public:
         return is;
     }
 
+    static bool is_equal(const a_type& rhs, const a_type& lhs){
+        return rhs == lhs;
+    }
+
     // key_from_{value,range,seedseq} - construct a key from the
     //   argument.  These functions make no effort to check or set the
     //   high bits of the key.  They should be passed through either
@@ -207,7 +213,7 @@ public:
     static bool clr_highbits(a_type& c){
         BOOST_STATIC_CONSTANT(unsigned, incr_idx = (Nbits - HighBits)/value_bits);
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
-        BOOST_STATIC_CONSTANT(T, Mask = low_bits_mask_t<Nbits - HighBits>::sig_bits);
+        BOOST_STATIC_CONSTANT(T, Mask = low_bits_mask_t<(Nbits - HighBits)%value_bits>::sig_bits);
         bool bad = false;
         typename a_type::iterator p = c.begin() + incr_idx;
         if( *p >= incr_stride )

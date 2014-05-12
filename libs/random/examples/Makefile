@@ -48,7 +48,7 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 else # g++
 
-OPTIMIZE= -ggdb3 -O0
+OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 CXXFLAGS+=$(COMMONFLAGS) -std=c++98
 #CXXFLAGS+=$(COMMONFLAGS) -std=c++11
@@ -65,7 +65,7 @@ endif
 
 HDRS:=../../../boost/random/*.hpp ../../../boost/random/detail/*.hpp Makefile
 
-Binaries:=counter_based_example philox_hash_value
+Binaries:=counter_based_example philox_hash_value ars_example
 
 All: $(Binaries)
 $(Binaries) : % : %.o
