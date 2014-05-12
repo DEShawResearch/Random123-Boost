@@ -66,12 +66,7 @@ namespace random{
 //   for computer security.
 
 template <unsigned Ndomain=4, unsigned Nkey=2>
-class sha1_prf : public detail::prf_common<Ndomain, 5, Nkey, uint32_t>{
-    typedef detail::prf_common<Ndomain, 5, Nkey, uint32_t> common_type;
-    typedef typename common_type::domain_type _domain_type;
-    typedef typename common_type::range_type _range_type;
-    typedef typename common_type::key_type _key_type;
-
+class sha1_prf {
     // SHA-1 is spec'ed in terms of 32-bit, big-endian words.
     // But uuids::detail::sha1 only has byte-oriented input
     // functions that would be endian-sensitive if we passed
@@ -86,9 +81,31 @@ class sha1_prf : public detail::prf_common<Ndomain, 5, Nkey, uint32_t>{
     }
     
 public:
-    sha1_prf(_key_type _k=_key_type()) : common_type(_k){}
+    typedef array<uint32_t, Ndomain> domain_type;
+    typedef array<uint32_t, 5> range_type;
+    typedef array<uint32_t, Nkey> key_type ;
 
-    _range_type operator()(_domain_type c){
+    sha1_prf() : k(){}
+    sha1_prf(key_type _k) : k(_k) {}
+    sha1_prf(const sha1_prf& v) : k(v.k){}
+
+    void setkey(key_type _k){
+        k = _k;
+    }
+
+    key_type getkey() const{
+        return k;
+    }
+
+    bool operator==(const sha1_prf& rhs) const{
+        return k == rhs.k;
+    }
+
+    bool operator!=(const sha1_prf& rhs) const{
+        return k != rhs.k;
+    }
+
+    range_type operator()(domain_type c){
         boost::uuids::detail::sha1 h;
         // salt with Nkey to disambiguate sha1_prf<Ndomain1,Nkey1>
         // from sha1_prf<Nkdomain2,Nkey2> when
@@ -99,10 +116,13 @@ public:
             process_u32(h, this->k[i]);
         for(int i=0; i<Ndomain; ++i)
             process_u32(h, c[i]);
-        _range_type ret;
+        range_type ret;
         h.get_digest(ret.elems);
         return ret;
     }
+
+protected:
+    key_type k;
 };
 
 } // namespace random

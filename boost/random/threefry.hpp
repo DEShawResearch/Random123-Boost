@@ -120,31 +120,32 @@ struct threefry{
 
 // specialize threefry<2, Uint, R>
 template<typename Uint, unsigned R, typename Constants>
-struct threefry<2, Uint, R, Constants> : public detail::prf_common<2, 2, 2, Uint>{
-private:
-    typedef detail::prf_common<2, 2, 2, Uint> common_type;
-    typedef typename common_type::domain_type _ctr_type;
-    typedef typename common_type::key_type _key_type;
-    struct _roundapplyer{
-        _ctr_type& c;
-        Uint* ks;
-        _roundapplyer(_ctr_type& _c, Uint* _ks) : c(_c), ks(_ks){}
-        void operator()(unsigned r){
-            c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
-            unsigned rplus = r+1;
-            if((rplus&3)==0){
-                unsigned r4 = rplus>>2;
-                c[0] += ks[r4%3]; 
-                c[1] += ks[(r4+1)%3] + r4;
-            }
-        }
-    };
-public:
-    threefry() : common_type(){}
-    threefry(_key_type _k) : common_type(_k){}
-    threefry(const threefry& v) : common_type(v){}
+struct threefry<2, Uint, R, Constants>{
+    typedef array<Uint, 2> domain_type;
+    typedef array<Uint, 2> range_type;
+    typedef array<Uint, 2> key_type ;
 
-    _ctr_type operator()(_ctr_type c){ 
+    threefry() : k(){}
+    threefry(key_type _k) : k(_k) {}
+    threefry(const threefry& v) : k(v.k){}
+
+    void setkey(key_type _k){
+        k = _k;
+    }
+
+    key_type getkey() const{
+        return k;
+    }
+
+    bool operator==(const threefry& rhs) const{
+        return k == rhs.k;
+    }
+
+    bool operator!=(const threefry& rhs) const{
+        return k != rhs.k;
+    }
+
+    domain_type operator()(domain_type c){ 
         Uint ks[3];
         ks[2] = Constants::KS_PARITY;
         ks[0] = this->k[0]; ks[2] ^= this->k[0]; c[0] += this->k[0];
@@ -166,44 +167,53 @@ public:
         return c; 
 #endif
     }
+
+protected:
+    struct _roundapplyer{
+        domain_type& c;
+        Uint* ks;
+        _roundapplyer(domain_type& _c, Uint* _ks) : c(_c), ks(_ks){}
+        void operator()(unsigned r){
+            c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations[r%8]); c[1] ^= c[0];
+            unsigned rplus = r+1;
+            if((rplus&3)==0){
+                unsigned r4 = rplus>>2;
+                c[0] += ks[r4%3]; 
+                c[1] += ks[(r4+1)%3] + r4;
+            }
+        }
+    };
+    key_type k;
 };
 
 // specialize threefry<4, Uint, R>
 template<typename Uint, unsigned R, typename Constants>
-struct threefry<4, Uint, R, Constants> : public detail::prf_common<4, 4, 4, Uint>{
-private:
-    typedef detail::prf_common<4, 4, 4, Uint> common_type;
-    typedef typename common_type::domain_type _ctr_type;
-    typedef typename common_type::key_type _key_type;
-    struct _roundapplyer{
-        _ctr_type& c;
-        Uint* ks;
-        _roundapplyer(_ctr_type& _c, Uint* _ks) : c(_c), ks(_ks){}
-        void operator()(unsigned r){
-            if((r&1)==0){
-                c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
-                c[2] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
-            }else{
-                c[0] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
-                c[2] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
-            }
-            ++r;
-            if((r&3)==0){
-                unsigned r4 = r>>2;
-                c[0] += ks[(r4+0)%5]; 
-                c[1] += ks[(r4+1)%5];
-                c[2] += ks[(r4+2)%5];
-                c[3] += ks[(r4+3)%5] + r4;
-            }
-        }
-    };
+struct threefry<4, Uint, R, Constants>{
+    typedef array<Uint, 4> domain_type;
+    typedef array<Uint, 4> range_type;
+    typedef array<Uint, 4> key_type ;
 
-public:
-    threefry() : common_type(){}
-    threefry(_key_type _k) : common_type(_k){}
-    threefry(const threefry& v) : common_type(v){}
+    threefry() : k(){}
+    threefry(key_type _k) : k(_k) {}
+    threefry(const threefry& v) : k(v.k){}
 
-    _ctr_type operator()(_ctr_type c){ 
+    void setkey(key_type _k){
+        k = _k;
+    }
+
+    key_type getkey() const{
+        return k;
+    }
+
+    bool operator==(const threefry& rhs) const{
+        return k == rhs.k;
+    }
+
+    bool operator!=(const threefry& rhs) const{
+        return k != rhs.k;
+    }
+
+    range_type operator()(domain_type c){ 
         Uint ks[5];
         ks[4] = Constants::KS_PARITY;
         ks[0] = this->k[0]; ks[4] ^= this->k[0]; c[0] += this->k[0];
@@ -237,6 +247,30 @@ public:
 #endif
     }
 
+protected:
+    struct _roundapplyer{
+        domain_type& c;
+        Uint* ks;
+        _roundapplyer(domain_type& _c, Uint* _ks) : c(_c), ks(_ks){}
+        void operator()(unsigned r){
+            if((r&1)==0){
+                c[0] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations0[r%8]); c[1] ^= c[0];
+                c[2] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations1[r%8]); c[3] ^= c[2];
+            }else{
+                c[0] += c[3]; c[3] = detail::rotl(c[3],Constants::Rotations0[r%8]); c[3] ^= c[0];
+                c[2] += c[1]; c[1] = detail::rotl(c[1],Constants::Rotations1[r%8]); c[1] ^= c[2];
+            }
+            ++r;
+            if((r&3)==0){
+                unsigned r4 = r>>2;
+                c[0] += ks[(r4+0)%5]; 
+                c[1] += ks[(r4+1)%5];
+                c[2] += ks[(r4+2)%5];
+                c[3] += ks[(r4+3)%5] + r4;
+            }
+        }
+    };
+    key_type k;
 };
 
 

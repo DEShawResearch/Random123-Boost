@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/integer/static_min_max.hpp>
 #include <boost/integer/static_log2.hpp>
 #include <boost/integer/integer_mask.hpp>
+#include <boost/random/detail/counter_traits.hpp>
 
 #include <iosfwd>
 #include <utility>
@@ -52,9 +53,13 @@ namespace boost{
 namespace random{
 
 template<typename Prf, 
-         unsigned CtrBits = static_unsigned_min<64u, Prf::range_bits/2>::value,
-         typename UintType = typename Prf::range_type::value_type, 
-         unsigned w = std::numeric_limits<UintType>::digits>
+         unsigned CtrBits = static_unsigned_min<64u, detail::counter_traits<typename Prf::domain_type>::Nbits/2>::value,
+         typename UintType = typename detail::counter_traits<typename Prf::range_type>::preferred_result_type,
+         unsigned w = std::numeric_limits<UintType>::digits,
+         typename DomainTraits = detail::counter_traits<typename Prf::domain_type>,
+         typename RangeTraits = detail::counter_traits<typename Prf::range_type>,
+         typename KeyTraits = detail::counter_traits<typename Prf::key_type>
+>
 struct counter_based_engine {
     typedef Prf prf_type;
     typedef UintType result_type;
@@ -66,148 +71,31 @@ protected:
     typedef typename Prf::range_type range_type;
     typedef typename Prf::domain_type domain_type;
     typedef typename Prf::key_type key_type;
-    typedef typename domain_type::value_type dvalue_type;
-    BOOST_STATIC_ASSERT(std::numeric_limits<dvalue_type>::is_modulo);
-    BOOST_STATIC_ASSERT(!std::numeric_limits<dvalue_type>::is_signed);
 
-    BOOST_STATIC_CONSTANT(unsigned, dvalue_bits = std::numeric_limits<dvalue_type>::digits);
-    BOOST_STATIC_ASSERT(CtrBits <= dvalue_bits*Prf::Ndomain);
+    BOOST_STATIC_ASSERT(CtrBits <= DomainTraits::Nbits);
     BOOST_STATIC_ASSERT(CtrBits > 0);
-    BOOST_STATIC_CONSTANT(unsigned, incr_idx = (Prf::Ndomain*dvalue_bits - CtrBits)/dvalue_bits);
-    BOOST_STATIC_CONSTANT(dvalue_type, incr_stride = dvalue_type(1)<<((Prf::Ndomain*dvalue_bits - CtrBits)%dvalue_bits));
-    BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = CtrBits/dvalue_bits);
-
-    typedef typename key_type::value_type kvalue_type;
-    BOOST_STATIC_CONSTANT(unsigned, kvalue_bits = std::numeric_limits<kvalue_type>::digits);
 
     BOOST_STATIC_ASSERT( std::numeric_limits<UintType>::digits >= w );
-    BOOST_STATIC_ASSERT( Prf::range_bits%w == 0 );
-    BOOST_STATIC_CONSTANT(unsigned, Nresult = Prf::range_bits/w);
+    BOOST_STATIC_ASSERT( RangeTraits::Nbits%w == 0 );
+    BOOST_STATIC_CONSTANT(unsigned, Nresult = RangeTraits::Nbits/w);
 
-    BOOST_STATIC_CONSTANT(unsigned, CtrBitsBits = static_log2<Prf::Ndomain*dvalue_bits>::value);
-    BOOST_STATIC_ASSERT(CtrBitsBits <= kvalue_bits);
-    BOOST_STATIC_CONSTANT(kvalue_type, CtrBitsMask = low_bits_mask_t<kvalue_bits-CtrBitsBits>::sig_bits );
+    BOOST_STATIC_CONSTANT(unsigned, CtrBitsBits = static_log2<DomainTraits::Nbits>::value);
 
     prf_type b;
     domain_type c;
-    union{
-        range_type range;
-        boost::array<result_type, Nresult> endian_dependent_result;
-    } vu;
+    range_type v;
     unsigned next;
 
-    result_type nth_result(unsigned n){
-#if 0
-        // The results in this branch are JUST AS RANDOM as the other
-        // branch, BUT if w!=rvalue_bits, the numerical output values
-        // will be bit-swizzled in an ENDIAN-DEPENDENT way.  If your
-        // compiler doesn't do constant-propagation well, this branch
-        // may be a lot faster.  Use it if you prefer to give up
-        // endian-independence for the added speed.
-        BOOST_STATIC_ASSERT( sizeof(vu.range) == sizeof(vu.endian_dependent_result) );
-        return vu.endian_dependent_result[n];
-#else
-        const unsigned rvalue_bits = Prf::range_bits/Prf::Nrange;
-        result_type r;
-        if( w == rvalue_bits ){
-            return vu.range[n];
-        }else if( w < rvalue_bits ){
-            const unsigned  results_per_rangeval = rvalue_bits/w;
-            const unsigned idx = n/results_per_rangeval;
-            const unsigned shift = (n%results_per_rangeval)*w;
-            const typename range_type::value_type r = vu.range[ idx ];
-            const result_type wmask = low_bits_mask_t<w>::sig_bits;
-            return (r >> shift)*wmask;
-        }else{
-            unsigned idx = (n*w)/rvalue_bits;
-            r = vu.range[idx++];
-            for(int i=1; i<w/rvalue_bits; ++i){
-                r = (r<<w) | vu.range[idx++];
-            }
-            return r;
-        }
-#endif
-    }
-            
     void setnext(unsigned n){
         if( n != Nresult ){
-            vu.range = b(c);
+            v = b(c);
         }
         next = n;
     }        
 
-    void incr(){
-        typename domain_type::reverse_iterator p = c.rbegin();
-        for(unsigned i=0; i<FullCtrWords; ++i){
-            *p += 1;
-            if(*p++)
-                return;
-        }
-        *p += incr_stride;
-        if(*p >= incr_stride)
-            return;
-        BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
-    }
-
-    void incr(boost::uintmax_t n){
-        typename domain_type::reverse_iterator p = c.rbegin();
-        for(unsigned i=0; i<FullCtrWords; ++i){
-            *p += dvalue_type(n);
-            bool carry = (*p++ < dvalue_type(n));
-            n >>= dvalue_bits-1; n>>=1;
-            if(carry)
-                n++;
-            if(n==0)
-                return;
-        }
-        // ??? - does this correctly detect all the overflow cases ???
-        if(n==0)
-            return;
-        if(n*incr_stride < incr_stride)
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
-        *p += n*incr_stride;
-        if(*p < incr_stride)
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
-    }
-
     void initialize(){
-        c.fill(0);
+        c = domain_type();
         next = Nresult;
-    }
-
-    void chk_highbasebits(domain_type c){
-        bool bad = false;
-        typename domain_type::const_iterator p = c.begin() + incr_idx;
-        if( *p++ >= incr_stride )
-            bad = true;
-        for( ; p != c.end(); ++p)
-            if(*p) bad = true;
-        if(bad)
-            BOOST_THROW_EXCEPTION(std::domain_error("Initial value of counter_based_engine's counter is too large"));
-    }
-
-    // key_from_{value,range,seedseq} - construct a key from the
-    //   argument.  These functions make no effort to check or set the
-    //   high bits of the key.  They should be passed through either
-    //   chk_highkeybits or set_highkeybits before being passed on to
-    //   a Prf constructor or Prf::setkey
-    key_type key_from_value(kvalue_type v){
-        key_type ret = {{v}};
-        return ret;
-    }
-
-    template <typename SeedSeq>
-    key_type key_from_seedseq(SeedSeq& seq){
-        key_type ret;
-        detail::seed_array_int<kvalue_bits>(seq, ret.elems);
-        return ret;
-    }
-
-    template <typename It>
-    key_type key_from_range(It& first, It last){
-        key_type ret;
-        detail::fill_array_int<kvalue_bits>(first, last, ret.elems);
-        return ret;
     }
 
     // We avoid collisions between engines with different CtrBits by
@@ -218,27 +106,19 @@ protected:
     // overlapping streams.
     //
     // When we accept a key from the user, e.g., seed(arithmetic) or
-    // seed(key_type), it is an error if the specified value has any
+    // seed(CtrType), it is an error if the specified value has any
     // high bits set.  On the other hand, it's not an error if
     // seed_seq.generate() sets those bits -- we just ignore them.
 
-    // chk_highkeybits - first check that the high CtrBitsBits of k
-    //  are 0.  If they're not, throw an out_of_range exception.  If
-    //  they are, then call set_highkeybits.
     key_type chk_highkeybits(key_type k){
-        if( k[Prf::Nkey-1] & ~CtrBitsMask ){
-            //std::cerr << "k[Nkey-1] = " << std::hex <<  k[Prf::Nkey-1] << std::dec << std::endl;
-            BOOST_THROW_EXCEPTION(std::domain_error("high bits of key are reserved for internal use by counter_based_engine"));
-        }
-        return set_highkeybits(k);
+        if( KeyTraits::template clr_highbits<CtrBitsBits>(k) )
+            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine:: high bits of key are reserved for internal use."));
+        return KeyTraits::template incr<CtrBitsBits>(k, CtrBits-1);
     }
 
-    // set_highkeybits - set the high CtrBitsBits of k to CtrBits-1,
-    //  regardless of their original contents.
     key_type set_highkeybits(key_type k){
-        k[Prf::Nkey-1] &= CtrBitsMask;
-        k[Prf::Nkey-1] |= kvalue_type(CtrBits-1)<<(kvalue_bits - CtrBitsBits);
-        return k;
+        KeyTraits::template clr_highbits<CtrBitsBits>(k);
+        return KeyTraits::template incr<CtrBitsBits>(k, CtrBits-1);
     }
 
 public:
@@ -248,9 +128,8 @@ public:
     counter_based_engine()
         : b(), c(), next(Nresult)
     {
-        vu.range.fill(0); // NOT logically necessary.  Silences a spurious gcc warning.
-        initialize();
         //std::cerr << "cbe()\n";
+        initialize();
     }
 
     counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Nresult){
@@ -271,21 +150,21 @@ public:
     }
 
     BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, result_type, value)
-        : b(chk_highkeybits(key_from_value(value)))
+        : b(chk_highkeybits(KeyTraits::key_from_value(value)))
     { 
         //std::cerr << "cbe(result_type)\n";
         initialize();
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(counter_based_engine, SeedSeq, seq)
-        : b(set_highkeybits(key_from_seedseq(seq)))
+        : b(set_highkeybits(KeyTraits::key_from_seedseq(seq)))
     {
         //std::cerr << "cbe(SeedSeq)\n";
         initialize();
     }
 
     template<class It> counter_based_engine(It& first, It last)
-        : b(chk_highkeybits(key_from_range(first, last)))
+        : b(chk_highkeybits(KeyTraits::key_from_range(first, last)))
     {
         //std::cerr << "cbe(range)\n";
         initialize();
@@ -300,20 +179,20 @@ public:
     BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, result_type, value)
     { 
         //std::cerr << "cbe::seed(arithmetic)\n";
-        b.setkey(chk_highkeybits(key_from_value(value)));
+        b.setkey(chk_highkeybits(KeyTraits::key_from_value(value)));
         initialize();
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(counter_based_engine, SeedSeq, seq){
         //std::cerr << "cbe::seed(SeedSeq)\n" << "\n";
-        b.setkey(set_highkeybits(key_from_seedseq(seq)));
+        b.setkey(set_highkeybits(KeyTraits::key_from_seedseq(seq)));
         initialize();
     }
 
     template<class It>
     void seed(It& first, It last){
         //std::cerr << "cbe::seed(range)\n";
-        b.setkey(chk_highkeybits(key_from_range(first, last)));
+        b.setkey(chk_highkeybits(KeyTraits::key_from_range(first, last)));
         initialize();
     }
 
@@ -327,29 +206,29 @@ public:
 
     BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, counter_based_engine, f){
         os << (f.next) << ' ';
-        for(typename domain_type::const_iterator p=f.c.begin(); p!=f.c.end(); ++p)
-            os << ' ' << *p;
-        os << f.b;
+        DomainTraits::insert(os, f.c);
+        KeyTraits::insert(os,  f.b.getkey());
         return os;
     }
 
     BOOST_RANDOM_DETAIL_ISTREAM_OPERATOR(is, counter_based_engine, f){
         size_t n;
         is >> n;
-        for(typename domain_type::iterator p=f.c.begin(); p!=f.c.end(); ++p)
-            is >> *p >> std::ws;
-        is >> f.b;
+        DomainTraits::extract(is, f.c);
+        key_type k;
+        KeyTraits::extract(is, k);
+        f.b.setkey(k);
         f.setnext(n);
         return is;
     }
 
     result_type operator()(){
         if( next == Nresult ){
-            incr();
-            vu.range = b(c);
+            c = DomainTraits::template incr<CtrBits>(c);
+            v = b(c);
             next = 0;
         }
-        return nth_result(next++);
+        return RangeTraits::template nth_result<result_type, w>(next++, v);
     }
 
     void discard(boost::uintmax_t skip){
@@ -359,7 +238,7 @@ public:
             newnext -= Nresult;
 	    skip++;
         }
-        incr(skip);
+        c = DomainTraits::template incr<CtrBits>(c, skip);
         setnext(newnext);
     }
          
@@ -377,7 +256,7 @@ public:
     //  touching the Prf or its key.  The counter is reset so there
     //  are again 2^CtrBits counters available.
     void restart(domain_type start){ 
-        chk_highbasebits(start);
+        DomainTraits::template chk_highbits<CtrBits>(start);
         c = start;
         next = Nresult;
     }
@@ -387,13 +266,14 @@ public:
     // counter.  It's an error to specify a key with high bits set
     // because the high bits are reserved for use by the engine to
     // disambiguate engines created with different CounterBits.
-    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : b(chk_highkeybits(k)), c(base), next(Nresult){
-        chk_highbasebits(base);
+    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : 
+        b(chk_highbits(k)), c(base), next(Nresult){
+        DomainTraits::template clr_bits<CtrBits>(base);
     }
 
     explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
-        chk_highbasebits(base);
+        DomainTraits::chk_highbasebits<CtrBits>(base);
     }
 
     void seed(key_type k, domain_type base){

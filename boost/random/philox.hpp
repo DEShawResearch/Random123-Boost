@@ -83,32 +83,33 @@ struct philox{
 };
 
 template <typename Uint, unsigned R, typename Constants>
-struct philox<2, Uint, R, Constants> : public detail::prf_common<2, 2, 1, Uint>{
-private:
-    typedef detail::prf_common<2, 2, 1, Uint> common_type;
-    typedef typename common_type::domain_type _ctr_type;
-    typedef typename common_type::key_type _key_type;
-    static inline void round(_ctr_type& ctr, _key_type& key){
-        Uint hi;
-        Uint lo = detail::mulhilo(Constants::M0, ctr[0], hi);
-        _ctr_type out = {{hi^key[0]^ctr[1], lo}};
-        ctr = out;
-        key[0] += Constants::W0;
+struct philox<2, Uint, R, Constants> {
+    typedef array<Uint, 2> domain_type;
+    typedef array<Uint, 2> range_type;
+    typedef array<Uint, 1> key_type ;
+
+    philox() : k(){}
+    philox(key_type _k) : k(_k) {}
+    philox(const philox& v) : k(v.k){}
+
+    void setkey(key_type _k){
+        k = _k;
     }
 
-    struct _roundapplyer{
-        _ctr_type& c;
-        _key_type& k;
-        _roundapplyer(_ctr_type& _c, _key_type& _k): c(_c), k(_k){}
-        void operator()(unsigned){ round(c, k); }
-    };
-public:
-    philox() : common_type(){}
-    philox(_key_type k) : common_type(k){}
-    philox(const philox& v) : common_type(v){}
+    key_type getkey() const{
+        return k;
+    }
 
-    _ctr_type operator()(_ctr_type c){
-        _key_type kcopy = this->k;
+    bool operator==(const philox& rhs) const{
+        return k == rhs.k;
+    }
+
+    bool operator!=(const philox& rhs) const{
+        return k != rhs.k;
+    }
+
+    range_type operator()(domain_type c){
+        key_type kcopy = k;
 #if 0   // using mpl to unroll the loop doesn't seem to help much.
         _roundapplyer ra(c, kcopy);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >(ra);
@@ -118,41 +119,54 @@ public:
 #endif
         return c;
     }
-};
-
-template<typename Uint, unsigned R, typename Constants>
-struct philox<4, Uint, R, Constants> : public detail::prf_common<4, 4, 2, Uint>{
-private:
-    typedef detail::prf_common<4, 4, 2, Uint> common_type;
-    typedef typename common_type::domain_type _ctr_type;
-    typedef typename common_type::key_type _key_type;
-    static inline void round(_ctr_type& ctr, _key_type& key){
-        Uint hi0;
-        Uint hi1;
-        Uint lo0 = detail::mulhilo(Constants::M0, ctr[0], hi0);
-        Uint lo1 = detail::mulhilo(Constants::M1, ctr[2], hi1);
-        _ctr_type out = {{hi1^ctr[1]^key[0], lo1,
-                                      hi0^ctr[3]^key[1], lo0}};
+protected:
+    static inline void round(domain_type& ctr, key_type& key){
+        Uint hi;
+        Uint lo = detail::mulhilo(Constants::M0, ctr[0], hi);
+        domain_type out = {{hi^key[0]^ctr[1], lo}};
         ctr = out;
         key[0] += Constants::W0;
-        key[1] += Constants::W1;
     }
 
     struct _roundapplyer{
-        _ctr_type& c;
-        _key_type& k;
-        _roundapplyer(_ctr_type& _c, _key_type& _k): c(_c), k(_k){}
+        domain_type& c;
+        key_type& k;
+        _roundapplyer(domain_type& _c, key_type& _k): c(_c), k(_k){}
         void operator()(unsigned){ round(c, k); }
     };
+    key_type k;
+};
 
+template<typename Uint, unsigned R, typename Constants>
+struct philox<4, Uint, R, Constants> {
+    typedef array<Uint, 4> domain_type;
+    typedef array<Uint, 4> range_type;
+    typedef array<Uint, 2> key_type ;
 public:
-    philox() : common_type(){}
-    philox(_key_type k) : common_type(k){}
-    philox(const philox& v) : common_type(v){}
 
-    _ctr_type operator()(_ctr_type c){
-        _key_type kcopy = this->k;
-#if 0   // using mpl to unroll the loop doesn't seem to help philox
+    philox() : k(){}
+    philox(key_type _k) : k(_k) {}
+    philox(const philox& v) : k(v.k){}
+
+    void setkey(key_type _k){
+        k = _k;
+    }
+
+    key_type getkey() const{
+        return k;
+    }
+
+    bool operator==(const philox& rhs) const{
+        return k == rhs.k;
+    }
+
+    bool operator!=(const philox& rhs) const{
+        return k != rhs.k;
+    }
+
+    range_type operator()(domain_type c){
+        key_type kcopy = k;
+#if 0   // using mpl to unroll the loop doesn't seem to help much.
         _roundapplyer ra(c, kcopy);
         mpl::for_each<mpl::range_c<unsigned, 0, R> >(ra);
 #else
@@ -161,6 +175,28 @@ public:
 #endif
         return c;
     }
+
+protected:
+    static inline void round(domain_type& ctr, key_type& key){
+        Uint hi0;
+        Uint hi1;
+        Uint lo0 = detail::mulhilo(Constants::M0, ctr[0], hi0);
+        Uint lo1 = detail::mulhilo(Constants::M1, ctr[2], hi1);
+        domain_type out = {{hi1^ctr[1]^key[0], lo1,
+                                      hi0^ctr[3]^key[1], lo0}};
+        ctr = out;
+        key[0] += Constants::W0;
+        key[1] += Constants::W1;
+    }
+
+    struct _roundapplyer{
+        domain_type& c;
+        key_type& k;
+        _roundapplyer(domain_type& _c, key_type& _k): c(_c), k(_k){}
+        void operator()(unsigned){ round(c, k); }
+    };
+
+    key_type k;
 };
 
 } // namespace random

@@ -34,8 +34,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/random/detail/operators.hpp>
 #include <boost/random/detail/seed.hpp>
+#include <boost/throw_exception.hpp>
+#include <boost/random/detail/seed_impl.hpp>
 #include <boost/array.hpp>
-#include <limits>
+#include <boost/limits.hpp>
 
 namespace boost{
 namespace random{
@@ -47,14 +49,16 @@ struct prf_common{
     BOOST_STATIC_CONSTANT(unsigned, Ndomain = Ndomain_);
     BOOST_STATIC_CONSTANT(unsigned, Nrange = Nrange_);
     BOOST_STATIC_CONSTANT(unsigned, Nkey = Nkey_);
-    BOOST_STATIC_CONSTANT(unsigned, domain_bits = Ndomain*std::numeric_limits<domain_vtype>::digits);
-    BOOST_STATIC_CONSTANT(unsigned, range_bits = Nrange*std::numeric_limits<range_vtype>::digits);
-    BOOST_STATIC_CONSTANT(unsigned, key_bits = Nkey*std::numeric_limits<key_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, domain_vbits = std::numeric_limits<domain_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, domain_bits = Ndomain*domain_vbits);
+    BOOST_STATIC_CONSTANT(unsigned, range_vbits = std::numeric_limits<range_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, range_bits = Nrange*range_vbits);
+    BOOST_STATIC_CONSTANT(unsigned, key_vbits = std::numeric_limits<key_vtype>::digits);
+    BOOST_STATIC_CONSTANT(unsigned, key_bits = Nkey*key_vbits);
     typedef array<domain_vtype, Ndomain> domain_type;
     typedef array<range_vtype, Nrange> range_type;
     typedef array<key_vtype, Nkey> key_type ;
 
-    key_type k;
     prf_common(key_type _k) : k(_k){
         //std::cerr << "prf_common(key_type)\n";
     }
@@ -68,23 +72,8 @@ struct prf_common{
     void setkey(key_type _k){ k = _k; }
     key_type getkey() const { return k; }
 
-    BOOST_RANDOM_DETAIL_OSTREAM_OPERATOR(os, prf_common, f){
-        for(typename key_type::const_iterator p=f.k.begin(); p!=f.k.end(); ++p)
-            os << ' ' << *p;
-        return os;
-    }
-
-    BOOST_RANDOM_DETAIL_ISTREAM_OPERATOR(is, prf_common, f){
-        for(typename key_type::iterator p=f.k.begin(); p!=f.k.end(); ++p)
-            is >> *p >> std::ws;
-        return is;
-    }
-
-    BOOST_RANDOM_DETAIL_EQUALITY_OPERATOR(prf_common, lhs, rhs){ 
-        return lhs.k == rhs.k;
-    }
-
-    BOOST_RANDOM_DETAIL_INEQUALITY_OPERATOR(prf_common)
+protected:
+    key_type k;
 };
 
 } // namespace detail
