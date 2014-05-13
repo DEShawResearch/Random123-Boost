@@ -105,7 +105,7 @@ void show_elapsed(double end, int iter, const std::string & name)
 }
 
 int main(int argc, char **argv){
-    counter_based_engine<ars_prf<5>, 64> e;
+    counter_based_engine<uint32_t, ars_prf<5> > e;
     std::cout << std::hex;
     std::cout << e() << "\n";
     std::cout << e() << "\n";
@@ -119,13 +119,13 @@ int main(int argc, char **argv){
     std::cout << std::dec;
     std::cout << "state of the generator: " << e << "\n";
 
-    counter_based_engine<ars_prf<5>, 64> f;
+    counter_based_engine<uint32_t, ars_prf<5> > f;
     BOOST_ASSERT(e != f);
 
     // Aggressive parameters:  5 rounds is "Crush-resistant"
     // but with no safety margin.
     // 64-bit output minimizes loop-overhead.
-    counter_based_engine<ars_prf<5>, 64, uint64_t> g;
+    counter_based_engine<uint64_t, ars_prf<5> > g;
     size_t N = 100000000;
     boost::timer t;
     uint64_t tmp = 0;

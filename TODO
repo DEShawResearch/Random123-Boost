@@ -6,6 +6,9 @@ o Documentation
 o tests (use the Boost.Test framework)
  - the existing boost test_generator.ipp is a good start, but
    we need more:
+     + directly test counter_traits rather than indirectly
+       via counter_based_engine.
+     + concept checker for counter_traits.
      + increments that wrap over multiple words and that exhaust
        the CounterBits.
      + tests of different CounterBits and verification that
@@ -20,15 +23,16 @@ o tests (use the Boost.Test framework)
 
  - test the quality of the output of counter_based_engine - We know
    from the literature that threefry and philox are Crush-resistant
-   when run in counter-mode.  And we know that the implementations
-   here match the published known-answer-tests, so threefry and philox
-   themselves are probably good.  What we don't know (without testing)
-   is that we haven't botched the counter_based_engine in some way.
-   There are plenty of opportunities for goofs, e.g., when we "carry"
-   across values in the domain_type or when we slice and dice the
-   outputs.  Some focused tests on identifiable trouple-spots, e.g.,
-   carrying, are a good idea.  But additional assurance would be
-   provided by running the output through TestU01.
+   when run in counter-mode.  And we know that the implementations *of
+   the Prfs* here match the published known-answer-tests, so
+   threefry.hpp and philox.hpp are probably good.  What we don't know
+   (without testing) is that we haven't botched the
+   counter_based_engine in some way.  There are plenty of
+   opportunities for goofs, e.g., when we "carry" across values in the
+   domain_type or when we slice and dice the outputs.  Some focused
+   tests on identifiable trouble-spots, e.g., carrying, are a good
+   idea.  But additional assurance would be provided by running the
+   output through TestU01.
 
     + May 8, 2014 - ran test of:
        counter_based_engine<threefry<4, uint64_t, 12>, 64, uint32_t> engine;
@@ -48,4 +52,3 @@ o misc
  - predefined "no_margin" round-counts, so you don't have to go look
    them up in the paper if you really want to run as fast as possible
    but still empirically Crush-resistant.
-   

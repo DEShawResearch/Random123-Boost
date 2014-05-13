@@ -36,7 +36,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/static_assert.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/limits.hpp>
-#include <boost/random/detail/prf_common.hpp>
 #include <boost/random/detail/rotl.hpp>
 #include <boost/mpl/range_c.hpp>
 #include <boost/mpl/for_each.hpp>

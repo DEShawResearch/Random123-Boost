@@ -52,19 +52,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace boost{
 namespace random{
 
-template<typename Prf, 
+template<typename UintType,
+         typename Prf, 
          unsigned CtrBits = static_unsigned_min<64u, detail::counter_traits<typename Prf::domain_type>::Nbits/2>::value,
-         typename UintType = typename detail::counter_traits<typename Prf::range_type>::preferred_result_type,
          unsigned w = std::numeric_limits<UintType>::digits,
          typename DomainTraits = detail::counter_traits<typename Prf::domain_type>,
          typename RangeTraits = detail::counter_traits<typename Prf::range_type>,
          typename KeyTraits = detail::counter_traits<typename Prf::key_type>
 >
 struct counter_based_engine {
-    typedef Prf prf_type;
     typedef UintType result_type;
+    typedef Prf prf_type;
     BOOST_STATIC_CONSTANT(unsigned, counter_bits = CtrBits);
     BOOST_STATIC_CONSTANT(unsigned, word_size = w);
+    typedef DomainTraits domain_traits;
+    typedef RangeTraits range_traits;
+    typedef KeyTraits key_traits;
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
 
 protected:

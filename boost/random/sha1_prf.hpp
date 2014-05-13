@@ -33,7 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef BOOST_RANDOM_SHA1_PRF_HPP
 #define BOOST_RANDOM_SHA1_PRF_HPP
 
-#include <boost/random/detail/prf_common.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/array.hpp>
 #include <boost/uuid/sha1.hpp>

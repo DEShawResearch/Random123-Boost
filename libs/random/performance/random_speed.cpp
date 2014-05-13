@@ -384,17 +384,17 @@ int main(int argc, char*argv[])
   run(iter, "ranlux24", boost::ranlux3());
   run(iter, "ranlux48", boost::ranlux4());
 
-  run(iter, "threefry4x64", boost::random::counter_based_engine< boost::random::threefry<4, uint64_t> >());
-  run(iter, "threefry2x64", boost::random::counter_based_engine< boost::random::threefry<2, uint64_t> >());
-  run(iter, "threefry4x32", boost::random::counter_based_engine< boost::random::threefry<4, uint32_t> >());
-  run(iter, "threefry2x32", boost::random::counter_based_engine< boost::random::threefry<2, uint32_t> >());
+  run(iter, "threefry4x64", boost::random::counter_based_engine< uint32_t, boost::random::threefry<4, uint64_t> >());
+  run(iter, "threefry2x64", boost::random::counter_based_engine< uint32_t, boost::random::threefry<2, uint64_t> >());
+  run(iter, "threefry4x32", boost::random::counter_based_engine< uint32_t, boost::random::threefry<4, uint32_t> >());
+  run(iter, "threefry2x32", boost::random::counter_based_engine< uint32_t, boost::random::threefry<2, uint32_t> >());
 
-  run(iter, "philox4x64", boost::random::counter_based_engine< boost::random::philox<4, uint64_t> >());
-  run(iter, "philox2x64", boost::random::counter_based_engine< boost::random::philox<2, uint64_t> >());
-  run(iter, "philox4x32", boost::random::counter_based_engine< boost::random::philox<4, uint32_t> >());
-  run(iter, "philox2x32", boost::random::counter_based_engine< boost::random::philox<2, uint32_t> >());
+  run(iter, "philox4x64", boost::random::counter_based_engine< uint32_t, boost::random::philox<4, uint64_t> >());
+  run(iter, "philox2x64", boost::random::counter_based_engine< uint32_t, boost::random::philox<2, uint64_t> >());
+  run(iter, "philox4x32", boost::random::counter_based_engine< uint32_t, boost::random::philox<4, uint32_t> >());
+  run(iter, "philox2x32", boost::random::counter_based_engine< uint32_t, boost::random::philox<2, uint32_t> >());
 
-  run(iter, "sha1<>", boost::random::counter_based_engine<boost::random::sha1_prf<> >());
+  run(iter, "sha1<>", boost::random::counter_based_engine<uint32_t, boost::random::sha1_prf<> >());
 
   run(iter, "counting", counting());
 
@@ -423,23 +423,23 @@ int main(int argc, char*argv[])
   // Threefry4x64, crush-resistant with a safety margin, 64-bit
   // output.  248-bit seed space.  2^192 restartable sequences, each
   // of length 2^66.
-  distrib(iter, "threefry4x64", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t> >());
+  distrib(iter, "threefry4x64", boost::random::counter_based_engine<uint64_t, boost::random::threefry<4, uint64_t> >());
 
   // Threefry4x64/32, crush-resistant with a safety margin, 32-bit
   // output.  248-bit seed space.  2^192 restartable sequences, each
   // of length 2^67.
-  distrib(iter, "threefry4x64/32", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t>, 64, uint32_t>());
+  distrib(iter, "threefry4x64/32", boost::random::counter_based_engine<uint32_t, boost::random::threefry<4, uint64_t>, 64>());
 
   // Philox 2x32-7 - very small (only 6x32bits of state),
   // crush-resistant with no safety margin.  26-bit seed space.
   // Reasonably fast (50-75% of mersenne), with 2^32 restart()-able
   // sequences each with a length of 2^33.
-  distrib(iter, "philox2x32-7", boost::random::counter_based_engine<boost::random::philox<2, uint32_t, 7> >());
+  distrib(iter, "philox2x32-7", boost::random::counter_based_engine<uint32_t, boost::random::philox<2, uint32_t, 7> >());
 
   // Threefry4x64, crush-resistant but with no safety margin.  248-bit
   // seed space.  This should be the fastest.  As fast as
   // mersenne19937, but much smaller (13x64bits), with better or equal
   // quality.  2^192 restartable sequences each of length 2^67
-  distrib(iter, "threefry4x64-12/32", boost::random::counter_based_engine<boost::random::threefry<4, uint64_t, 12>, 64, uint32_t>());
+  distrib(iter, "threefry4x64-12/32", boost::random::counter_based_engine<uint32_t, boost::random::threefry<4, uint64_t, 12>, 64>());
 
 }

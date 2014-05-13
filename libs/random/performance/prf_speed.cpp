@@ -92,20 +92,21 @@ void run(int iter, const std::string & name, RNG rng)
   std::cout << "Engine: ";
   typename RNG::result_type tmp = 0;
   boost::timer t;
-  for(int i = 0; i < iter; i++)
-    tmp ^= rng();
+  for(int i = 0; i < iter; i++){
+      tmp ^= rng();
+  }
   show_elapsed(t.elapsed(), iter, name, sizeof(tmp));
   if(tmp==0)
       std::cerr << name << ": The xor is zero.  That's surprising!\n";
 }
 
-template <typename Prf, typename Otype>
+template <typename Otype, typename Prf>
 void  __attribute__((noinline)) run_cbeng(const std::string& name, int iter){
     std::string pfx= "counter_based_engine<" + name + ">";
     // N.B.  Use 24 bits of iter as the key.  Not really necessary, but
     // it prevents the compiler from possibly performing some of the key
     // arithmetic at compile-time.
-    run(iter, pfx, counter_based_engine<Prf>(iter&0xffffff));
+    run(iter, pfx, counter_based_engine<Otype, Prf>(iter&0xffffff));
 }
 
 void do_threefry(int iter){
@@ -113,18 +114,18 @@ void do_threefry(int iter){
   // *much lower* (3x) performance for some of the other functions.
   // Wild guess - we've hit some limit meant to prevent too much
   std::cout << "Threefry: with recommended safety margin\n";
-  run_cbeng<threefry<4, uint64_t>, uint64_t >("threefry4x64", iter);
-  run_cbeng<threefry<4, uint64_t>, uint32_t >("threfry4x64/32", iter);
-  run_cbeng<threefry<4, uint32_t>, uint32_t >("threefry4x32", iter);
-  run_cbeng<threefry<2, uint64_t>, uint64_t >("threefry2x64", iter);
-  //run_cbeng<threefry<2, uint32_t> >("threefry2x32", iter);
+  run_cbeng<uint64_t, threefry<4, uint64_t> >("threefry4x64", iter);
+  run_cbeng<uint32_t, threefry<4, uint64_t> >("threfry4x64/32", iter);
+  run_cbeng<uint32_t, threefry<2, uint32_t> >("threefry2x32", iter);
+  //run_cbeng<uint32_t, threefry<4, uint32_t> >("threefry4x32", iter);
+  //run_cbeng<uint64_t, threefry<2, uint64_t> >("threefry2x64", iter);
 
   std::cout << "Threefry:  Crush-resistant, with no safety margin\n";
   // Note - on a 3.07GHz Xeon 5667 (Westmere) threefry4x64-12 should
   // be the winner at around 1.7 CPB.
-  run_cbeng<threefry<4, uint64_t, 12>, uint64_t >("threefry4x64-12", iter);
-  run_cbeng<threefry<4, uint64_t, 12>, uint32_t>("threefry4x64-12/32", iter);
-  run_cbeng<threefry<4, uint32_t, 13>, uint64_t>("threefry4x32-13/64", iter);
+  run_cbeng<uint64_t, threefry<4, uint64_t, 12> >("threefry4x64-12", iter);
+  run_cbeng<uint32_t, threefry<4, uint64_t, 12> >("threefry4x64-12/32", iter);
+  //run_cbeng<uint64_t, threefry<4, uint32_t, 13> >("threefry4x32-13/64", iter);
   //run_cbeng<threefry<4, uint32_t, 12> >("threefry4x32-12", iter);
   //run_cbeng<threefry<2, uint64_t, 13> >("threefry2x64-13", iter);
   //run_cbeng<threefry<2, uint32_t, 13> >("threefry2x32-13", iter);
@@ -132,16 +133,16 @@ void do_threefry(int iter){
 
 void do_philox(int iter){
   std::cout << "Philox: with recommended safety margin\n";
-  run_cbeng<philox<4, uint64_t>, uint64_t >("philox4x64", iter);
-  run_cbeng<philox<4, uint32_t>, uint32_t >("philox4x32", iter);
-  run_cbeng<philox<2, uint64_t>, uint64_t >("philox2x64", iter);
-  run_cbeng<philox<2, uint32_t>, uint32_t >("philox2x32", iter);
+  run_cbeng<uint64_t, philox<4, uint64_t> >("philox4x64", iter);
+  run_cbeng<uint32_t, philox<4, uint32_t> >("philox4x32", iter);
+  run_cbeng<uint64_t, philox<2, uint64_t> >("philox2x64", iter);
+  run_cbeng<uint32_t, philox<2, uint32_t> >("philox2x32", iter);
 
   std::cout << "Philox:  Crush-resistant, with no safety margin\n";
-  run_cbeng<philox<4, uint64_t, 7>, uint64_t >("philox4x64-7", iter);
-  run_cbeng<philox<4, uint32_t, 7>, uint32_t >("philox4x32-7", iter);
-  run_cbeng<philox<2, uint64_t, 6>, uint64_t >("philox2x64-6", iter);
-  run_cbeng<philox<2, uint32_t, 7>, uint32_t >("philox2x32-7", iter);
+  run_cbeng<uint64_t, philox<4, uint64_t, 7> >("philox4x64-7", iter);
+  run_cbeng<uint32_t, philox<4, uint32_t, 7> >("philox4x32-7", iter);
+  run_cbeng<uint64_t, philox<2, uint64_t, 6> >("philox2x64-6", iter);
+  run_cbeng<uint32_t, philox<2, uint32_t, 7> >("philox2x32-7", iter);
 }
 
 int main(int argc, char*argv[])
@@ -159,7 +160,7 @@ int main(int argc, char*argv[])
     atoi(argv[1]);
 
   std::cout << "\nPseudo-random functions:\n";
-  run_cbeng<IdentityPrf<2, uint64_t>, uint64_t >("Ident2x64", iter);
+  //run_cbeng<uint64_t, IdentityPrf<2, uint64_t> >("Ident2x64", iter);
 
   do_threefry(iter);
   do_philox(iter);

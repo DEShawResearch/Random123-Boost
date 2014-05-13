@@ -277,12 +277,12 @@ public:
         if( w == value_bits ){
             return v[n];
         }else if( w < value_bits ){
-            const unsigned  results_per_rangeval = Nbits/w;
+            const unsigned  results_per_rangeval = value_bits/w;
             const unsigned idx = n/results_per_rangeval;
             const unsigned shift = (n%results_per_rangeval)*w;
             const typename a_type::value_type r = v[ idx ];
             const result_type wmask = low_bits_mask_t<w>::sig_bits;
-            return (r >> shift)*wmask;
+            return (r >> shift)&wmask;
         }else{
             unsigned idx = (n*w)/Nbits;
             r = v[idx++];

@@ -23,14 +23,16 @@
 #define BOOST_TEST_MODULE counter_engine_counter
 #include <boost/test/included/unit_test.hpp>
 
-#define BOOST_COUNTER_BASED_ENGINE_CTRBITS 128
-#define BOOST_COUNTER_BASED_ENGINE_DVALBITS 64
-#define BOOST_COUNTER_BASED_ENGINE_NDOMAIN 4
-
-//#define BOOST_COUNTER_BASED_ENGINE_DSIZE 4
+#define BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE uint64_t
 #define BOOST_PSEUDO_RANDOM_FUNCTION boost::random::threefry<4, uint64_t>
-typedef boost::random::counter_based_engine<BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_COUNTER_BASED_ENGINE_CTRBITS> engine_t;
+#define BOOST_COUNTER_BASED_ENGINE_CTRBITS 128u
+
+typedef boost::random::counter_based_engine<BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE, BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_COUNTER_BASED_ENGINE_CTRBITS> engine_t;
 #define BOOST_RANDOM_URNG engine_t
+
+static const unsigned dvalbits = std::numeric_limits<BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE>::digits;
+static const unsigned ctrbits = BOOST_RANDOM_URNG::counter_bits;
+static const unsigned ndomain = BOOST_RANDOM_URNG::domain_traits::Nbits / dvalbits;
 
 using namespace boost::multiprecision;
 
@@ -49,15 +51,15 @@ uint1024_t get_sample_counter(BOOST_RANDOM_URNG& urng)
     ss << urng;
     ss >> subcounter;
    
-    for (unsigned int i=0; i<BOOST_COUNTER_BASED_ENGINE_NDOMAIN; ++i) {
+    for (unsigned int i=0; i<ndomain; ++i) {
         ss >> digit;
-        counter <<= BOOST_COUNTER_BASED_ENGINE_DVALBITS;
+        counter <<= dvalbits;
         counter += digit;
     }
     --counter; // the counter starts at one, here we make it zero based
     
-    counter &= (uint1024_t(1)<<BOOST_COUNTER_BASED_ENGINE_CTRBITS) - 1;
-    counter = counter * BOOST_COUNTER_BASED_ENGINE_NDOMAIN + subcounter;
+    counter &= (uint1024_t(1)<<ctrbits) - 1;
+    counter = counter * ndomain + subcounter;
         
     //std::cout << "counter=" <<  counter << " (" << os.str() << ")" << std::endl;
     return counter;
@@ -77,7 +79,7 @@ void set_sample_counter(BOOST_RANDOM_URNG& urng, uint1024_t counter)
 
     // pop the counter from the captured state
     oldstate >> subcounter;
-    for (unsigned i=0; i<BOOST_COUNTER_BASED_ENGINE_NDOMAIN; ++i)
+    for (unsigned i=0; i<ndomain; ++i)
         oldstate >> digit;
         
     // store the remaining state in a string
@@ -86,17 +88,17 @@ void set_sample_counter(BOOST_RANDOM_URNG& urng, uint1024_t counter)
     
     // construct the new counter part of the state
     std::stringstream newstate;
-    newstate << (counter % BOOST_COUNTER_BASED_ENGINE_NDOMAIN);
+    newstate << (counter % ndomain);
 
-    counter /= BOOST_COUNTER_BASED_ENGINE_NDOMAIN;
+    counter /= ndomain;
     ++counter;
     
     int bits_already_set = 0;
-    for (int i=BOOST_COUNTER_BASED_ENGINE_NDOMAIN-1; i>=0; --i) {
+    for (int i=ndomain-1; i>=0; --i) {
     
-        unsigned bits_this_round = std::min(BOOST_COUNTER_BASED_ENGINE_DVALBITS, BOOST_COUNTER_BASED_ENGINE_CTRBITS - bits_already_set);
+        unsigned bits_this_round = std::min(dvalbits, ctrbits - bits_already_set);
         
-        digit = counter >> (i*BOOST_COUNTER_BASED_ENGINE_DVALBITS);
+        digit = counter >> (i*dvalbits);
         digit &=  (uint1024_t(1)<<bits_this_round) - 1;
         newstate << ' ' << digit;
         
@@ -115,11 +117,11 @@ void set_sample_counter(BOOST_RANDOM_URNG& urng, uint1024_t counter)
 uint1024_t max_sample_counter()
 {
     uint1024_t ret(1);
-    ret <<= BOOST_COUNTER_BASED_ENGINE_CTRBITS;
+    ret <<= ctrbits;
     --ret;
     --ret;
-    ret *= BOOST_COUNTER_BASED_ENGINE_NDOMAIN;
-    ret += BOOST_COUNTER_BASED_ENGINE_NDOMAIN - 1;
+    ret *= ndomain;
+    ret += ndomain - 1;
     return ret;
 }
 

@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/random/philox.hpp>
 #include <boost/cstdint.hpp>
 
+#define BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE uint64_t
 #define BOOST_PSEUDO_RANDOM_FUNCTION boost::random::philox<2, uint64_t>
 #define BOOST_COUNTER_BASED_ENGINE_CTRBITS 32
 

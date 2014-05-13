@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/random/sha1_prf.hpp>
 #include <boost/cstdint.hpp>
 
+#define BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE uint32_t
 #define BOOST_PSEUDO_RANDOM_FUNCTION boost::random::sha1_prf<4, 1>
 #define BOOST_COUNTER_BASED_ENGINE_CTRBITS 32
 
