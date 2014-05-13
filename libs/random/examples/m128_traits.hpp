@@ -55,7 +55,6 @@ namespace detail{
 
 template<>
 struct counter_traits<__m128i>{
-    typedef uint32_t preferred_result_type;
     BOOST_STATIC_CONSTANT(unsigned, Nbits = 128u);
 
     template<class CharT, class Traits>

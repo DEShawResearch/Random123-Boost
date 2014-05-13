@@ -75,7 +75,6 @@ namespace detail{
 
 template <typename CtrType, typename Enable = void>
 struct counter_traits{
-    typedef void preferred_result_type;
     BOOST_STATIC_CONSTANT(unsigned, Nbits = 0);
 
     template<class CharT, class Traits>
@@ -164,7 +163,6 @@ protected:
     typedef boost::array<T, N> a_type;
     BOOST_STATIC_CONSTANT(unsigned, value_bits = std::numeric_limits<T>::digits);
 public:
-    typedef T preferred_result_type;
     BOOST_STATIC_CONSTANT(unsigned, Nbits = N*value_bits);
 
     template<class CharT, class Traits>
