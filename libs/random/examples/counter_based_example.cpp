@@ -56,12 +56,16 @@ void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key
 // zero mean and 'sigma' that depends on the temperature and the
 // atomic mass.
 void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf::key_type& key){
-    counter_based_engine<uint32_t, Prf, 32> cbeng(key);
+    typedef counter_based_engine<uint32_t, Prf, 32> engine_t;
+    engine_t cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
         float rmsvelocity = sqrt(kT/atoms[i].mass);
         normal_distribution<float> mbd(0., rmsvelocity);
 #if __cplusplus < 201103L
-        Prf::domain_type start = {atoms[i].id, timestep, THERMALIZE_CTXT};
+        uint32_t base32[4] = {atoms[i].id, timestep, THERMALIZE_CTXT};
+        uint32_t* p = &base32[0];
+        Prf::domain_type start = engine_t::domain_traits::make_counter(p, &base32[4]);
+        //Prf::domain_type start = {atoms[i].id, timestep, THERMALIZE_CTXT};
         cbeng.restart(start);
 #else
         // C++11 initializer lists make this even easier.

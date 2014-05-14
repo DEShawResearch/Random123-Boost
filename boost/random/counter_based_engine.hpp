@@ -124,6 +124,11 @@ protected:
         return KeyTraits::template incr<CtrBitsBits>(k, CtrBits-1);
     }
 
+    template <typename SeedSeq>
+    key_type make_key_from_seedseq(SeedSeq& seq){
+        return set_highkeybits(KeyTraits::_make_counter_from_seedseq(seq));
+    }
+
 public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () { return 0; }
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return low_bits_mask_t<w>::sig_bits; }
@@ -153,21 +158,21 @@ public:
     }
 
     BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, result_type, value)
-        : b(chk_highkeybits(KeyTraits::key_from_value(value)))
+        : b(chk_highkeybits(KeyTraits::make_counter(value)))
     { 
         //std::cerr << "cbe(result_type)\n";
         initialize();
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(counter_based_engine, SeedSeq, seq)
-        : b(set_highkeybits(KeyTraits::key_from_seedseq(seq)))
+        : b(make_key_from_seedseq(seq))
     {
         //std::cerr << "cbe(SeedSeq)\n";
         initialize();
     }
 
     template<class It> counter_based_engine(It& first, It last)
-        : b(chk_highkeybits(KeyTraits::key_from_range(first, last)))
+        : b(chk_highkeybits(KeyTraits::make_counter(first, last)))
     {
         //std::cerr << "cbe(range)\n";
         initialize();
@@ -182,20 +187,20 @@ public:
     BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, result_type, value)
     { 
         //std::cerr << "cbe::seed(arithmetic)\n";
-        b.setkey(chk_highkeybits(KeyTraits::key_from_value(value)));
+        b.setkey(chk_highkeybits(KeyTraits::make_counter(value)));
         initialize();
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(counter_based_engine, SeedSeq, seq){
         //std::cerr << "cbe::seed(SeedSeq)\n" << "\n";
-        b.setkey(set_highkeybits(KeyTraits::key_from_seedseq(seq)));
+        b.setkey(make_key_from_seedseq(seq));
         initialize();
     }
 
     template<class It>
     void seed(It& first, It last){
         //std::cerr << "cbe::seed(range)\n";
-        b.setkey(chk_highkeybits(KeyTraits::key_from_range(first, last)));
+        b.setkey(chk_highkeybits(KeyTraits::make_counter(first, last)));
         initialize();
     }
 
@@ -278,13 +283,13 @@ public:
     explicit counter_based_engine(key_type k, domain_type base = domain_type()) : 
         b(chk_highkeybits(k)), c(base), next(Nresult){
         if( DomainTraits::template clr_highbits<CtrBits>(base) )
-            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine restart value overlaps with counter bits"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
     }
 
     explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
         if( DomainTraits::clr_highbits<CtrBits>(base) )
-            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine restart value overlaps with counter bits"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
     }
 
     void seed(key_type k, domain_type base){

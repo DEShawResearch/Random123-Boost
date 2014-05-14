@@ -79,45 +79,31 @@ struct counter_traits<__m128i>{
         return 0xf==_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(lhs, rhs)));
     }
 
-    // key_from_{value,range,seedseq} - construct a key from the
-    //   argument.  These functions make no effort to check or set the
-    //   high bits of the key.  They should be passed through either
-    //   chk_highkeybits or set_highkeybits before being passed on to
-    //   a Prf constructor or Prf::setkey
-    static __m128i key_from_value(uintmax_t v){
+    static __m128i make_counter(uintmax_t v){
         __m128i ret = _mm_set_epi32(v, 0, 0, 0);
         return ret;
     }
 
     template <typename SeedSeq>
-    static __m128i key_from_seedseq(SeedSeq& seq){
-        __m128i ret;
-        detail::seed_array_int<128>(seq, &ret);
-        return ret;
+    static __m128i _make_counter_from_seed_seq(SeedSeq& seq){
+        union{
+            uint32_t a[4];
+            __m128i m;
+        } u;
+        detail::seed_array_int<32>(first, last, u.a);
+        return u.m;
     }
 
     template <typename It>
-    static __m128i key_from_range(It& first, It last){
-        __m128i ret;
-        detail::fill_array_int<128>(first, last, &ret);
-        return ret;
+    static __m128i make_counter(It& first, It last){
+        union{
+            uint32_t a[4];
+            __m128i m;
+        } u;
+        detail::fill_array_int<32>(first, last, u.a);
+        return u.m;
     }
 
-    // We avoid collisions between engines with different CtrBits by
-    // embedding the value CtrBits-1 in the high few bits of the last
-    // element of Prf's key.  If we didn't do this, it would be too
-    // easy for counter_based_engine<Prf, N> and
-    // counter_based_engine<Prf, M> to "collide", producing
-    // overlapping streams.
-    //
-    // When we accept a key from the user, e.g., seed(arithmetic) or
-    // seed(__m128i), it is an error if the specified value has any
-    // high bits set.  On the other hand, it's not an error if
-    // seed_seq.generate() sets those bits -- we just ignore them.
-
-    // chk_highkeybits - first check that the high CtrBitsBits of k
-    //  are 0.  If they're not, throw an out_of_range exception.  If
-    //  they are, then call set_highkeybits.
     template<unsigned CtrBitsBits>
     static bool clr_highbits(__m128i& k){
         BOOST_STATIC_ASSERT(CtrBitsBits <= 32);

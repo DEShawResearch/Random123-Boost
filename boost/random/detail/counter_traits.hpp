@@ -85,18 +85,18 @@ struct counter_traits{
 
     static bool is_equal(const CtrType& rhs, const CtrType& lhs);
 
-    // key_from_{value,range,seedseq} - construct a key from the
-    //   argument.  These functions make no effort to check or set the
-    //   high bits of the key.  They should be passed through either
-    //   chk_highkeybits or set_highkeybits before being passed on to
-    //   a Prf constructor or Prf::setkey
-    static CtrType key_from_value(uintmax_t v);
-
-    template <typename SeedSeq>
-    static CtrType key_from_seedseq(SeedSeq& seq);
+    // make_counter - construct a counter from the given arguments.
+    static CtrType make_counter(uintmax_t v);
 
     template <typename It>
-    static CtrType key_from_range(It& first, It last);
+    static CtrType make_counter(It& first, It last);
+
+    // _make_counter_from_seedseq - used by counter_based_engine,
+    //   but discouraged use by applications because SeedSeq
+    //   output is submect to birthday-paradox collisions.  Prefer
+    //   to use the range-based make_counter(first, last) instead.
+    template <typename SeedSeq>
+    static CtrType _make_counter_from_seedseq(SeedSeq& s);
 
     // clr_highbits - clear the HighBits of c, return true if the
     //  bits of c were not clear on input.
@@ -183,27 +183,22 @@ public:
         return rhs == lhs;
     }
 
-    // key_from_{value,range,seedseq} - construct a key from the
-    //   argument.  These functions make no effort to check or set the
-    //   high bits of the key.  They should be passed through either
-    //   chk_highkeybits or set_highkeybits before being passed on to
-    //   a Prf constructor or Prf::setkey
-    static a_type key_from_value(uintmax_t v){
+    static a_type make_counter(uintmax_t v){
         a_type ret = {{T(v)}};
         return ret;
     }
 
-    template <typename SeedSeq>
-    static a_type key_from_seedseq(SeedSeq& seq){
+    template <typename It>
+    static a_type make_counter(It& first, It last){
         a_type ret;
-        detail::seed_array_int<Nbits>(seq, ret.elems);
+        detail::fill_array_int<value_bits>(first, last, ret.elems);
         return ret;
     }
 
-    template <typename It>
-    static a_type key_from_range(It& first, It last){
+    template <typename SeedSeq>
+    static a_type _make_counter_from_seedseq(SeedSeq& s){
         a_type ret;
-        detail::fill_array_int<Nbits>(first, last, ret.elems);
+        detail::seed_array_int<value_bits>(s, ret.elems);
         return ret;
     }
 
@@ -290,6 +285,7 @@ public:
             return r;
         }
     }
+
 };
 
 // 3 - And finally, we can specialize counter_traits, publicly inheriting

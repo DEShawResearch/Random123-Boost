@@ -126,6 +126,9 @@ int main(int argc, char **argv){
     // but with no safety margin.
     // 64-bit output minimizes loop-overhead.
     counter_based_engine<uint64_t, ars_prf<5> > g;
+    uint32_t ss[4] = {1, 2, 3, 4};
+    uint32_t *ss0 = &ss[0];
+    g.seed(ss0, &ss[4]);
     size_t N = 100000000;
     boost::timer t;
     uint64_t tmp = 0;
