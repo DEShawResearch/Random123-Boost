@@ -49,6 +49,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 #include <algorithm>
 
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+#include <initializer_list>
+#endif
+
 namespace boost{
 namespace random{
 
@@ -274,6 +278,13 @@ public:
         c = start;
         next = Nresult;
     }
+
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+    template <typename V>
+    void restart(std::initializer_list<V> il){
+        restart( DomainTraits::make_counter(il) );
+    }
+#endif
 
     // Constructor and seed() method to construct or re-seed a
     // counter_based_engine from a key or a Prf and an optional base

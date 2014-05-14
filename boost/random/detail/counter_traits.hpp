@@ -43,6 +43,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/cstdint.hpp>
 #include <boost/mpl/has_xxx.hpp>
 
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+#include <initializer_list>
+#endif
+
 namespace boost{
 namespace random{
 namespace detail{
@@ -91,13 +95,28 @@ struct counter_traits{
     template <typename It>
     static CtrType make_counter(It& first, It last);
 
-    // _make_counter_from_seedseq - used by counter_based_engine,
-    //   but discouraged use by applications because SeedSeq
-    //   output is submect to birthday-paradox collisions.  Prefer
-    //   to use the range-based make_counter(first, last) instead.
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+    template <typename V>
+    static CtrType make_counter(std::initializer_list<V>);
+#endif
+
+    // _make_counter_from_seedseq - used by counter_based_engine
+    //   because counter_based_engine is obliged to provide SeedSeq
+    //   methods.  It is discouraged for use by applications because
+    //   SeedSeq output is subject to birthday-paradox collisions.
+    //   Applications that want to use counter_traits::make_counter to
+    //   manufacture counters should the range-based
+    //   make_counter(first, last) and take responsibility for
+    //   avoiding collisions themselves rather than relying on the
+    //   dubious statistical properties of SeedSeq.
+private:
     template <typename SeedSeq>
     static CtrType _make_counter_from_seedseq(SeedSeq& s);
 
+    template <typename T, typename Prf, unsigned CtrBits, unsigned w, typename Dtraits, typename Rtraits, typename Ktrats>
+    friend class counter_based_engine;
+
+public:
     // clr_highbits - clear the HighBits of c, return true if the
     //  bits of c were not clear on input.
     template <unsigned HighBits>
@@ -195,12 +214,24 @@ public:
         return ret;
     }
 
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+    template <typename V>
+    static a_type make_counter(std::initializer_list<V> il){
+        return make_counter(il.begin(), il.end());
+    }
+#endif
+
+private:
     template <typename SeedSeq>
     static a_type _make_counter_from_seedseq(SeedSeq& s){
         a_type ret;
         detail::seed_array_int<value_bits>(s, ret.elems);
         return ret;
     }
+    template <typename Tt, typename Prf, unsigned CtrBits, unsigned w, typename Dtraits, typename Rtraits, typename Ktrats>
+    friend class counter_based_engine;
+
+public:
 
     template <unsigned HighBits>
     static bool clr_highbits(a_type& c){

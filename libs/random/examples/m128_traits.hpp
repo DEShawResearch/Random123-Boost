@@ -41,6 +41,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/limits.hpp>
 
 #include <stdexcept>
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+#include <initializer_list>
+#endif
 
 namespace boost{
 namespace random{
@@ -84,16 +87,6 @@ struct counter_traits<__m128i>{
         return ret;
     }
 
-    template <typename SeedSeq>
-    static __m128i _make_counter_from_seed_seq(SeedSeq& seq){
-        union{
-            uint32_t a[4];
-            __m128i m;
-        } u;
-        detail::seed_array_int<32>(first, last, u.a);
-        return u.m;
-    }
-
     template <typename It>
     static __m128i make_counter(It& first, It last){
         union{
@@ -103,6 +96,28 @@ struct counter_traits<__m128i>{
         detail::fill_array_int<32>(first, last, u.a);
         return u.m;
     }
+
+#if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+    template <typename V>
+    static __m128i make_counter(std::initializer_list<V> il){
+        return make_counter(il.begin(), il.end());
+    }
+#endif
+
+private:
+    template <typename SeedSeq>
+    static __m128i _make_counter_from_seed_seq(SeedSeq& seq){
+        union{
+            uint32_t a[4];
+            __m128i m;
+        } u;
+        detail::seed_array_int<32>(seq, u.a);
+        return u.m;
+    }
+    template <typename Tt, typename Prf, unsigned CtrBits, unsigned w, typename Dtraits, typename Rtraits, typename Ktrats>
+    friend class counter_based_engine;
+
+public:
 
     template<unsigned CtrBitsBits>
     static bool clr_highbits(__m128i& k){

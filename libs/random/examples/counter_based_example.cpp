@@ -32,7 +32,8 @@ float kT = 8.314 * 300; // J/mol
 float amu = 1.e-3;      // 1 amu = 1e-3 kg/mol
 
 // Choose a pseudo-random function:
-typedef threefry<4, uint32_t> Prf;
+typedef threefry<2, uint64_t> Prf;
+typedef counter_based_engine<uint32_t, Prf, 32> engine_t;
 
 // An enum to distinguish the different contexts in which we generate
 // randoms:
@@ -42,10 +43,16 @@ enum { THERMALIZE_CTXT, MASS_ASSIGN_CTXT };
 // of m1 or m2.  Use a bernoulli distribution
 void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key_type& key){
     bernoulli_distribution<float> bd;
-    counter_based_engine<uint32_t, Prf, 32> cbeng(key);
+    engine_t cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
-        Prf::domain_type start = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
+#if __cplusplus>=201103L && defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+        cbeng.restart({atoms[i].id, 0, uint32_t(MASS_ASSIGN_CTXT)});
+#else
+        uint32_t base32[4] = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
+        uint32_t *b0 = &base32[0];
+        Prf::domain_type start = engine_t::domain_traits::make_counter(b0, &base32[4]);
         cbeng.restart(start);
+#endif
         bd.reset();
         atoms[i].mass = bd(cbeng)  ? m1 : m2;
     }
@@ -56,20 +63,18 @@ void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key
 // zero mean and 'sigma' that depends on the temperature and the
 // atomic mass.
 void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf::key_type& key){
-    typedef counter_based_engine<uint32_t, Prf, 32> engine_t;
     engine_t cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
         float rmsvelocity = sqrt(kT/atoms[i].mass);
         normal_distribution<float> mbd(0., rmsvelocity);
-#if __cplusplus < 201103L
+#if __cplusplus>=201103L && defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
+        cbeng.restart({atoms[i].id, timestep, uint32_t(THERMALIZE_CTXT)});
+#else
         uint32_t base32[4] = {atoms[i].id, timestep, THERMALIZE_CTXT};
-        uint32_t* p = &base32[0];
-        Prf::domain_type start = engine_t::domain_traits::make_counter(p, &base32[4]);
+        uint32_t *b0 = &base32[0];
+        Prf::domain_type start = engine_t::domain_traits::make_counter(b0, &base32[4]);
         //Prf::domain_type start = {atoms[i].id, timestep, THERMALIZE_CTXT};
         cbeng.restart(start);
-#else
-        // C++11 initializer lists make this even easier.
-        cbeng.restart({atoms[i].id, timestep, THERMALIZE_CTXT});
 #endif
         atoms[i].vx = mbd(cbeng);
         atoms[i].vy = mbd(cbeng);
