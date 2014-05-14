@@ -238,7 +238,7 @@ public:
         }
         *p += incr_stride;
         if(*p < incr_stride)
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
         return d;
     }
 
@@ -262,10 +262,10 @@ public:
         if(n==0)
             return d;
         if(n*incr_stride < incr_stride)
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
         *p += n*incr_stride;
         if(*p < incr_stride)
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine::incr(): ran out of counters"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
         return d;
     }
 

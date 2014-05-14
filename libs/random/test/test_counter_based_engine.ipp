@@ -56,7 +56,7 @@ void do_test_huge_discard(boost::uintmax_t bigjump){
     bool out_of_bitsn = false;
     try{
         urng2.discard(bigjump);
-    }catch(std::domain_error&){
+    }catch(std::invalid_argument&){
         // It's ok if bigjump exceeds our sequence length.
         // It just means that we are testing a counter_based_engine
         // with a small-ish number of CounterBits.
@@ -74,7 +74,7 @@ void do_test_huge_discard(boost::uintmax_t bigjump){
             urngn.discard(n);
             BOOST_CHECK_EQUAL(urng, urngn);
         }
-    }catch(std::domain_error&){
+    }catch(std::invalid_argument&){
         out_of_bitsn = true;
     }
     BOOST_CHECK_EQUAL(out_of_bits1, out_of_bitsn);

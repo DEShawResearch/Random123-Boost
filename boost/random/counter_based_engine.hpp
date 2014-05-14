@@ -115,7 +115,7 @@ protected:
 
     key_type chk_highkeybits(key_type k){
         if( KeyTraits::template clr_highbits<CtrBitsBits>(k) )
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine:: high bits of key are reserved for internal use."));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
         return KeyTraits::template incr<CtrBitsBits>(k, CtrBits-1);
     }
 
@@ -264,7 +264,7 @@ public:
     //  are again 2^CtrBits counters available.
     void restart(domain_type start){ 
         if( DomainTraits::template clr_highbits<CtrBits>(start) )
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine:: high bits of key are reserved for internal use."));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
             
         c = start;
         next = Nresult;
@@ -278,13 +278,13 @@ public:
     explicit counter_based_engine(key_type k, domain_type base = domain_type()) : 
         b(chk_highkeybits(k)), c(base), next(Nresult){
         if( DomainTraits::template clr_highbits<CtrBits>(base) )
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine restart value overlaps with counter bits"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine restart value overlaps with counter bits"));
     }
 
     explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
         if( DomainTraits::clr_highbits<CtrBits>(base) )
-            BOOST_THROW_EXCEPTION(std::domain_error("counter_based_engine restart value overlaps with counter bits"));
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine restart value overlaps with counter bits"));
     }
 
     void seed(key_type k, domain_type base){
