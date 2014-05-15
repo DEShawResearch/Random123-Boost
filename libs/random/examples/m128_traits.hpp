@@ -82,6 +82,10 @@ struct counter_traits<__m128i>{
         return 0xf==_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(lhs, rhs)));
     }
 
+    static __m128i make_counter(){
+        return _mm_setzero_si128();
+    }
+
     static __m128i make_counter(uintmax_t v){
         __m128i ret = _mm_set_epi32(v, 0, 0, 0);
         return ret;

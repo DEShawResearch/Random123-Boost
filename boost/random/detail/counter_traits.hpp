@@ -90,6 +90,8 @@ struct counter_traits{
     static bool is_equal(const CtrType& rhs, const CtrType& lhs);
 
     // make_counter - construct a counter from the given arguments.
+    static CtrType make_counter();
+
     static CtrType make_counter(uintmax_t v);
 
     template <typename It>
@@ -203,6 +205,11 @@ public:
 
     static bool is_equal(const a_type& rhs, const a_type& lhs){
         return rhs == lhs;
+    }
+
+    static a_type make_counter(){
+        a_type ret = {};
+        return ret;
     }
 
     static a_type make_counter(uintmax_t v){

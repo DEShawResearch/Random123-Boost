@@ -101,7 +101,7 @@ protected:
     }        
 
     void initialize(){
-        c = domain_type();
+        c = DomainTraits::make_counter();
         next = Nresult;
     }
 
@@ -184,7 +184,7 @@ public:
 
     void seed(){
         //std::cerr << "cbe::seed()\n";
-        b.setkey(key_type());
+        b.setkey(KeyTraits::make_counter());
         initialize();
     }
 
@@ -291,13 +291,13 @@ public:
     // counter.  It's an error to specify a key with high bits set
     // because the high bits are reserved for use by the engine to
     // disambiguate engines created with different CounterBits.
-    explicit counter_based_engine(key_type k, domain_type base = domain_type()) : 
+    explicit counter_based_engine(key_type k, domain_type base = DomainTraits::make_counter()) : 
         b(chk_highkeybits(k)), c(base), next(Nresult){
         if( DomainTraits::template clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
     }
 
-    explicit counter_based_engine(const Prf& _b, domain_type base = domain_type()) : b(_b), c(base), next(Nresult){
+    explicit counter_based_engine(const Prf& _b, domain_type base = DomainTraits::make_counter()) : b(_b), c(base), next(Nresult){
         chk_highkeybits(b.getkey());
         if( DomainTraits::clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
