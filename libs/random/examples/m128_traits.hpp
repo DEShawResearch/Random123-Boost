@@ -97,6 +97,12 @@ struct counter_traits<__m128i>{
         return u.m;
     }
 
+    template <typename It>
+    static __m128i make_counter(const It& first, It last){
+        It _first = first;
+        return make_counter(_first, last);
+    }
+
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
     template <typename V>
     static __m128i make_counter(std::initializer_list<V> il){

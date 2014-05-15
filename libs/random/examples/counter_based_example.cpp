@@ -49,8 +49,7 @@ void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key
         cbeng.restart({atoms[i].id, 0, uint32_t(MASS_ASSIGN_CTXT)});
 #else
         uint32_t base32[4] = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
-        uint32_t *b0 = &base32[0];
-        Prf::domain_type start = engine_t::domain_traits::make_counter(b0, &base32[4]);
+        Prf::domain_type start = engine_t::domain_traits::make_counter(&base32[0], &base32[4]);
         cbeng.restart(start);
 #endif
         bd.reset();
@@ -71,8 +70,7 @@ void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf::key_ty
         cbeng.restart({atoms[i].id, timestep, uint32_t(THERMALIZE_CTXT)});
 #else
         uint32_t base32[4] = {atoms[i].id, timestep, THERMALIZE_CTXT};
-        uint32_t *b0 = &base32[0];
-        Prf::domain_type start = engine_t::domain_traits::make_counter(b0, &base32[4]);
+        Prf::domain_type start = engine_t::domain_traits::make_counter(&base32[0], &base32[4]);
         //Prf::domain_type start = {atoms[i].id, timestep, THERMALIZE_CTXT};
         cbeng.restart(start);
 #endif

@@ -95,6 +95,9 @@ struct counter_traits{
     template <typename It>
     static CtrType make_counter(It& first, It last);
 
+    template <typename It>
+    static CtrType make_counter(const It& first, It last);
+
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
     template <typename V>
     static CtrType make_counter(std::initializer_list<V>);
@@ -212,6 +215,12 @@ public:
         a_type ret;
         detail::fill_array_int<value_bits>(first, last, ret.elems);
         return ret;
+    }
+
+    template <typename It>
+    static a_type make_counter(const It& first, It last){
+        It _first = first;
+        return make_counter(_first, last);
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)

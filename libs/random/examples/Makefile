@@ -50,8 +50,8 @@ else # g++
 
 OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
-CXXFLAGS+=$(COMMONFLAGS) -std=c++03
-#CXXFLAGS+=$(COMMONFLAGS) -std=c++11
+#CXXFLAGS+=$(COMMONFLAGS) -std=c++03
+CXXFLAGS+=$(COMMONFLAGS) -std=c++11
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
 LDLIBS+=-lboost_thread -lboost_system
 
