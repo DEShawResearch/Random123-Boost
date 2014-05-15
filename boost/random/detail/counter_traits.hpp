@@ -184,63 +184,63 @@ struct isBoostArray{
 template <typename T, unsigned N>
 struct array_counter_traits{
 protected:
-    typedef boost::array<T, N> a_type;
+    typedef boost::array<T, N> CtrType;
     BOOST_STATIC_CONSTANT(unsigned, value_bits = std::numeric_limits<T>::digits);
 public:
     BOOST_STATIC_CONSTANT(unsigned, Nbits = N*value_bits);
 
     template<class CharT, class Traits>
-    static std::basic_ostream<CharT, Traits>& insert(std::basic_ostream<CharT, Traits>& os, const a_type& a){
+    static std::basic_ostream<CharT, Traits>& insert(std::basic_ostream<CharT, Traits>& os, const CtrType& a){
         for(unsigned i=0; i<N; ++i)
             os << a[i] << ' ';
         return os;
     }
 
     template<class CharT, class Traits>
-    static std::basic_istream<CharT, Traits>& extract(std::basic_istream<CharT, Traits>& is, a_type& a){
+    static std::basic_istream<CharT, Traits>& extract(std::basic_istream<CharT, Traits>& is, CtrType& a){
         for(unsigned i=0; i<N; ++i)
             is >> a[i] >> std::ws;
         return is;
     }
 
-    static bool is_equal(const a_type& rhs, const a_type& lhs){
+    static bool is_equal(const CtrType& rhs, const CtrType& lhs){
         return rhs == lhs;
     }
 
-    static a_type make_counter(){
-        a_type ret = {};
+    static CtrType make_counter(){
+        CtrType ret = {};
         return ret;
     }
 
-    static a_type make_counter(uintmax_t v){
-        a_type ret = {{T(v)}};
+    static CtrType make_counter(uintmax_t v){
+        CtrType ret = {{T(v)}};
         return ret;
     }
 
     template <typename It>
-    static a_type make_counter(It& first, It last){
-        a_type ret;
+    static CtrType make_counter(It& first, It last){
+        CtrType ret;
         detail::fill_array_int<value_bits>(first, last, ret.elems);
         return ret;
     }
 
     template <typename It>
-    static a_type make_counter(const It& first, It last){
+    static CtrType make_counter(const It& first, It last){
         It _first = first;
         return make_counter(_first, last);
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
     template <typename V>
-    static a_type make_counter(std::initializer_list<V> il){
+    static CtrType make_counter(std::initializer_list<V> il){
         return make_counter(il.begin(), il.end());
     }
 #endif
 
 private:
     template <typename SeedSeq>
-    static a_type _make_counter_from_seedseq(SeedSeq& s){
-        a_type ret;
+    static CtrType _make_counter_from_seedseq(SeedSeq& s){
+        CtrType ret;
         detail::seed_array_int<value_bits>(s, ret.elems);
         return ret;
     }
@@ -250,12 +250,12 @@ private:
 public:
 
     template <unsigned HighBits>
-    static bool clr_highbits(a_type& c){
+    static bool clr_highbits(CtrType& c){
         BOOST_STATIC_CONSTANT(unsigned, incr_idx = (Nbits - HighBits)/value_bits);
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(T, Mask = low_bits_mask_t<(Nbits - HighBits)%value_bits>::sig_bits);
         bool bad = false;
-        typename a_type::iterator p = c.begin() + incr_idx;
+        typename CtrType::iterator p = c.begin() + incr_idx;
         if( *p >= incr_stride )
             bad = true;
         *p++ &= Mask;
@@ -267,12 +267,12 @@ public:
     }
 
     template <unsigned HighBits>
-    static a_type incr(a_type d){
+    static CtrType incr(CtrType d){
         BOOST_STATIC_ASSERT(HighBits <= Nbits);
         BOOST_STATIC_ASSERT(HighBits > 0);
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
-        typename a_type::reverse_iterator p = d.rbegin();
+        typename CtrType::reverse_iterator p = d.rbegin();
         for(unsigned i=0; i<FullCtrWords; ++i){
             *p += 1;
             if(*p++)
@@ -285,12 +285,12 @@ public:
     }
 
     template <unsigned HighBits>
-    static a_type incr(a_type d, boost::uintmax_t n){
+    static CtrType incr(CtrType d, boost::uintmax_t n){
         BOOST_STATIC_ASSERT(HighBits <= Nbits);
         BOOST_STATIC_ASSERT(HighBits > 0);
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
-        typename a_type::reverse_iterator p = d.rbegin();
+        typename CtrType::reverse_iterator p = d.rbegin();
         for(unsigned i=0; i<FullCtrWords; ++i){
             *p += T(n);
             bool carry = (*p++ < T(n));
@@ -312,7 +312,7 @@ public:
     }
 
     template <typename result_type, unsigned w>
-    static result_type nth_result(unsigned n, a_type v){
+    static result_type nth_result(unsigned n, CtrType v){
         result_type r;
         if( w == value_bits ){
             return v[n];
@@ -320,7 +320,7 @@ public:
             const unsigned  results_per_rangeval = value_bits/w;
             const unsigned idx = n/results_per_rangeval;
             const unsigned shift = (n%results_per_rangeval)*w;
-            const typename a_type::value_type r = v[ idx ];
+            const typename CtrType::value_type r = v[ idx ];
             const result_type wmask = low_bits_mask_t<w>::sig_bits;
             return (r >> shift)&wmask;
         }else{
