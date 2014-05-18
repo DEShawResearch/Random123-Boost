@@ -49,6 +49,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace boost{
 namespace random{
+template <typename, typename, unsigned, unsigned, typename, typename, typename>
+struct counter_based_engine;
 namespace detail{
 
 // counter_traits - static functions that allow counter_based_engine
@@ -117,9 +119,8 @@ struct counter_traits{
 private:
     template <typename SeedSeq>
     static CtrType _make_counter_from_seedseq(SeedSeq& s);
-
-    template <typename T, typename Prf, unsigned CtrBits, unsigned w, typename Dtraits, typename Rtraits, typename Ktrats>
-    friend class counter_based_engine;
+    template <typename, typename, unsigned, unsigned, typename, typename, typename>
+    friend struct ::boost::random::counter_based_engine;
 
 public:
     // clr_highbits - clear the HighBits of c, return true if the
@@ -244,10 +245,11 @@ private:
         detail::seed_array_int<value_bits>(s, ret.elems);
         return ret;
     }
-    template <typename Tt, typename Prf, unsigned CtrBits, unsigned w, typename Dtraits, typename Rtraits, typename Ktrats>
-    friend class counter_based_engine;
+    template <typename, typename, unsigned, unsigned, typename, typename, typename>
+    friend struct ::boost::random::counter_based_engine;
 
 public:
+
 
     template <unsigned HighBits>
     static bool clr_highbits(CtrType& c){
@@ -324,10 +326,13 @@ public:
             const result_type wmask = low_bits_mask_t<w>::sig_bits;
             return (r >> shift)&wmask;
         }else{
-            unsigned idx = (n*w)/Nbits;
+            unsigned idx = (n*w)/value_bits;
             r = v[idx++];
-            for(int i=1; i<w/value_bits; ++i){
-                r = (r<<w) | v[idx++];
+	    // silence a bogus warning about shift-amount-too-large.
+	    // N.B.  valuebits is always < w in this branch.
+	    const unsigned shift = (value_bits<w)?value_bits : 0;
+            for(unsigned i=1; i<w/value_bits; ++i){
+                r = (r<<shift) | v[idx++];
             }
             return r;
         }

@@ -111,9 +111,9 @@ public:
         //   Ndomain1+Nkey1 == Nkdomain2+Nkey2
         BOOST_STATIC_ASSERT(uint8_t(Nkey) == Nkey);
         h.process_byte(Nkey);  
-        for(int i=0; i<Nkey; ++i)
+        for(unsigned i=0; i<Nkey; ++i)
             process_u32(h, this->k[i]);
-        for(int i=0; i<Ndomain; ++i)
+        for(unsigned i=0; i<Ndomain; ++i)
             process_u32(h, c[i]);
         range_type ret;
         h.get_digest(ret.elems);
