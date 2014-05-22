@@ -1,34 +1,9 @@
-/** @page LICENSE
-Copyright 2014, D. E. Shaw Research.
-All rights reserved.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+// Copyright 2014, D. E. Shaw Research.
+// Distributed under the Boost Software License, Version 1.0.
+// (See accompanying file LICENSE_1_0.txt or copy at
+// http://www.boost.org/LICENSE_1_0.txt )
 
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions, and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions, and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-
-* Neither the name of D. E. Shaw Research nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 #ifndef BOOST_RANDOM_DETAIL_COUNTER_TRAITS_HPP
 #define BOOST_RANDOM_DETAIL_COUNTER_TRAITS_HPP
 
@@ -57,9 +32,9 @@ namespace detail{
 //  to "do its thing" with the data types used by a Prf.  The idea is
 //  that counter_based_engine will be declared something like:
 //
-//template<typename Prf, 
+//template<typename UintType,
+//         typename Prf, 
 //         unsigned CtrBits = static_unsigned_min<64u, detail::counter_traits<typename Prf::domain_type>::Nbits/2>::value,
-//         typename UintType = typename detail::counter_traits<typename Prf::range_type>::preferred_result_type,
 //         unsigned w = std::numeric_limits<UintType>::digits,
 //         typename DomainTraits = detail::counter_traits<typename Prf::domain_type>,
 //         typename RangeTraits = detail::counter_traits<typename Prf::range_type>,
@@ -71,13 +46,17 @@ namespace detail{
 // to increment counters in the domain, extract results from the
 // range, etc.
 //
-// In addition, we provide a specialization that matches any
-//   counter_based_engine< boost::array<T, N> >;
-// which satisfies the requirements for threefry and philox.
+// In addition, we provide a specializations of the form:
+//   counter_traits< boost::array<UintType, N> >;
+// Since the domain_types, key_types and range_types of threefry
+// and philox are all boost::arrays, this allows us to wrap them
+// (threefry and philox) with counter_based_engine.
 //
 // To introduce a new Prf that works with different types, one would
-// have to provide specializations of counter_based_engine for the new
-// Prf's domain, range and key types.
+// provide specializations of counter_traits for the new Prf's domain,
+// range and key types.  For example, hardware-and-compiler-specific
+// code that specializes counter_traits for the Intel SSE __m128i type
+// is in the libs/random/examples directory.
 
 template <typename CtrType, typename Enable = void>
 struct counter_traits{
@@ -92,8 +71,8 @@ struct counter_traits{
     static bool is_equal(const CtrType& rhs, const CtrType& lhs);
 
     // make_counter - construct a counter from the given arguments.
-    static CtrType make_counter();
-
+    // N.B.  counter_based_engine also assumes that CtrTypes are
+    // DefaultConstructable and CopyAssignable and CopyConstructable.
     static CtrType make_counter(uintmax_t v);
 
     template <typename It>
@@ -107,22 +86,6 @@ struct counter_traits{
     static CtrType make_counter(std::initializer_list<V>);
 #endif
 
-    // _make_counter_from_seedseq - used by counter_based_engine
-    //   because counter_based_engine is obliged to provide SeedSeq
-    //   methods.  It is discouraged for use by applications because
-    //   SeedSeq output is subject to birthday-paradox collisions.
-    //   Applications that want to use counter_traits::make_counter to
-    //   manufacture counters should the range-based
-    //   make_counter(first, last) and take responsibility for
-    //   avoiding collisions themselves rather than relying on the
-    //   dubious statistical properties of SeedSeq.
-private:
-    template <typename SeedSeq>
-    static CtrType _make_counter_from_seedseq(SeedSeq& s);
-    template <typename, typename, unsigned, unsigned, typename, typename, typename>
-    friend struct ::boost::random::counter_based_engine;
-
-public:
     // clr_highbits - clear the HighBits of c, return true if the
     //  bits of c were not clear on input.
     template <unsigned HighBits>
@@ -136,6 +99,23 @@ public:
 
     template <typename result_type, unsigned w>
     static result_type nth_result(unsigned n, CtrType v);
+
+    // _make_counter_from_seedseq - used by counter_based_engine
+    //   because counter_based_engine is obliged to provide SeedSeq
+    //   methods.  It is discouraged for use by applications because
+    //   SeedSeq output is subject to birthday-paradox collisions.
+    //   Applications that want to use counter_traits::make_counter to
+    //   manufacture counters should the range-based
+    //   make_counter(first, last) and take responsibility for
+    //   avoiding collisions themselves rather than relying on the
+    //   dubious statistical properties of SeedSeq.  Applications
+    //   that *really* want to iniialize with a SeedSeq can
+    //   create derived class.
+protected:
+    template <typename SeedSeq>
+    static CtrType _make_counter_from_seedseq(SeedSeq& s);
+    template <typename, typename, unsigned, unsigned, typename, typename, typename>
+    friend struct ::boost::random::counter_based_engine;
 };
 
 // We want a counter_traits type, so we can say:
@@ -184,6 +164,11 @@ struct isBoostArray{
 
 template <typename T, unsigned N>
 struct array_counter_traits{
+    BOOST_STATIC_ASSERT(N>0);
+    BOOST_STATIC_ASSERT(std::numeric_limits<T>::is_specialized); 
+    BOOST_STATIC_ASSERT(!std::numeric_limits<T>::is_signed);
+    BOOST_STATIC_ASSERT(std::numeric_limits<T>::is_modulo);
+    BOOST_STATIC_ASSERT(std::numeric_limits<T>::radix == 2);
 protected:
     typedef boost::array<T, N> CtrType;
     BOOST_STATIC_CONSTANT(unsigned, value_bits = std::numeric_limits<T>::digits);
@@ -208,20 +193,70 @@ public:
         return rhs == lhs;
     }
 
-    static CtrType make_counter(){
-        CtrType ret = {};
-        return ret;
+    static CtrType make_counter(uintmax_t v = 0){
+        return make_counter(&v, &v+1);
     }
 
-    static CtrType make_counter(uintmax_t v){
-        CtrType ret = {{T(v)}};
-        return ret;
-    }
-
+    // ??? What should the semantics of make_counter be???  The
+    // primary consideration has to be avoidance of unintended
+    // collisions.  If the caller assembles two ranges that *look*
+    // different, then they *must* produce different CounterTypes (or
+    // at least one should throw an exception).  It's a bit tricky to
+    // define ranges that 'look different':
+    //
+    //    First, (conceptually) extend the shorter one with zeros
+    //    until it's the same length as the longer.
+    // 
+    //    Then, compare them  element-by-element.  If any elements
+    //    differ, then they 'look different'.
+    //
+    // Furthermore, make_counter should use all the bits in the range.
+    // The caller controls the iterator's value_type and should be
+    // free to choose it to suit his needs.  Having chosen a
+    // value_type, the caller should be permitted to use all its
+    // values.  There's no reason for make_counter to restrict the
+    // caller to using only the low 32 bits of the value_type.
     template <typename It>
     static CtrType make_counter(It& first, It last){
         CtrType ret;
-        detail::fill_array_int<value_bits>(first, last, ret.elems);
+        typedef typename std::iterator_traits<It>::value_type it_value_type;
+        BOOST_STATIC_ASSERT(std::numeric_limits<it_value_type>::is_integer);
+        BOOST_STATIC_ASSERT(std::numeric_limits<it_value_type>::radix == 2);
+        const unsigned it_value_bits = std::numeric_limits<it_value_type>::digits + std::numeric_limits<it_value_type>::is_signed;
+        BOOST_STATIC_ASSERT(value_bits%it_value_bits==0 || it_value_bits%value_bits==0);
+        it_value_type itv;
+        if( it_value_bits == value_bits ){
+            for(std::size_t j = 0; j < N; j++) {
+                itv = (first != last) ? *first++ : 0;
+                ret[j] = static_cast<T>(itv);
+            }
+        }else if( it_value_bits < value_bits ){
+            for(std::size_t j = 0; j < N; j++) {
+                T val = 0;
+                for(std::size_t k = 0; k < value_bits/it_value_bits; ++k) {
+                    itv = (first != last) ? *first++ : 0;
+                    val = (val << it_value_bits) | static_cast<T>(itv);
+                }
+                ret[j] = val;
+            }
+        }else{
+            const unsigned itvals_per_Tval = it_value_bits/value_bits;
+            itv = (first != last) ? *first++ : 0;
+            unsigned jj = 0;
+            for(std::size_t j=0; j<N; ++j){
+                if( jj++ == itvals_per_Tval ){
+                    itv = (first != last) ? *first++ : 0;
+                    jj = 0;
+                }
+                ret[j] = static_cast<T>(itv) & low_bits_mask_t<value_bits>::sig_bits;
+                const unsigned shift = (value_bits < it_value_bits) ? value_bits : 0;
+                itv >>= shift;
+            }
+        }
+        while( first != last ){
+            if( *first++ )
+                BOOST_THROW_EXCEPTION(std::invalid_argument("make_counter:  non-zero elements in the range that don't fit in the counter"));
+        }
         return ret;
     }
 
@@ -237,19 +272,6 @@ public:
         return make_counter(il.begin(), il.end());
     }
 #endif
-
-private:
-    template <typename SeedSeq>
-    static CtrType _make_counter_from_seedseq(SeedSeq& s){
-        CtrType ret;
-        detail::seed_array_int<value_bits>(s, ret.elems);
-        return ret;
-    }
-    template <typename, typename, unsigned, unsigned, typename, typename, typename>
-    friend struct ::boost::random::counter_based_engine;
-
-public:
-
 
     template <unsigned HighBits>
     static bool clr_highbits(CtrType& c){
@@ -275,7 +297,8 @@ public:
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
-        for(unsigned i=0; i<FullCtrWords; ++i){
+        // FullCtrWords&& silences a bogus warning from icpc.  Consider -disable-diag 411 instead.
+        for(unsigned i=0; FullCtrWords && (i<FullCtrWords); ++i){
             *p += 1;
             if(*p++)
                 return d;
@@ -293,7 +316,8 @@ public:
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
-        for(unsigned i=0; i<FullCtrWords; ++i){
+        // FullCtrWords&& silences a bogus warning from icpc.  Consider -diag-disable 186 instead.
+        for(unsigned i=0; FullCtrWords && (i<FullCtrWords); ++i){
             *p += T(n);
             bool carry = (*p++ < T(n));
             n >>= value_bits-1; n>>=1;
@@ -329,15 +353,26 @@ public:
             unsigned idx = (n*w)/value_bits;
             r = v[idx++];
 	    // silence a bogus warning about shift-amount-too-large.
-	    // N.B.  valuebits is always < w in this branch.
-	    const unsigned shift = (value_bits<w)?value_bits : 0;
-            for(unsigned i=1; i<w/value_bits; ++i){
+	    // N.B.  w is always > valuebits in this branch!
+	    const unsigned shift = (w>value_bits)?value_bits : 0;
+            // silence another bogus warning about comparison with 0
+            const unsigned imax = (w>value_bits)?w/value_bits : 1;
+            for(unsigned i=1; i<imax; ++i){
                 r = (r<<shift) | v[idx++];
             }
             return r;
         }
     }
 
+protected:
+    template <typename SeedSeq>
+    static CtrType _make_counter_from_seedseq(SeedSeq& s){
+        CtrType ret;
+        detail::seed_array_int<value_bits>(s, ret.elems);
+        return ret;
+    }
+    template <typename, typename, unsigned, unsigned, typename, typename, typename>
+    friend struct ::boost::random::counter_based_engine;
 };
 
 // 3 - And finally, we can specialize counter_traits, publicly inheriting

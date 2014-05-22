@@ -45,6 +45,9 @@ ifeq ($(CXX),icpc)
 # grok the contents of the latest g++ STL includes.
 CXXFLAGS+=-ggdb -fast
 CXXFLAGS+=-diag-disable 279 # 'controlling expression is a constant'
+CXXFLAGS+=-diag-disable 654 # 'overloaded function is only partially overwritten' (boost::unit_test::compiler_log_formatter)
+CXXFLAGS+=-diag-disable 411 # 'class template defines no constructor to initialize' (Streamable RandomNumberEngine, etc)
+
 gcclib=$(shell $(newgcc) --print-file-name=libstdc++.so)
 LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
