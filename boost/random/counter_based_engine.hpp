@@ -108,29 +108,25 @@ protected:
         return set_highkeybits(KeyTraits::_make_counter_from_seedseq(seq));
     }
 
-    // This is wrong.  But it's necessary to satisfy the
-    // test_iterator_seed tests in test_generator.ipp.  Why is it so
-    // wrong?  Because it goes out of its way to introduce surprising
-    // and completely unnecessary collisions:
-    //    uint64_t s[1], *b;
-    //    s[0] = 0x876543210;
-    //    b = &s[0];
-    //    cbe1.seed(b, b+1);
-    //    s[0] = 0x76543210;  // seed looks different
-    //    b = &s[0];
-    //    cbe2.seed(b, b+1);
-    //    assert( cbe == cbe2 ); // produces the same cbe!!
-    //
-    // If instead, we just called KeyTraits::make_counter(first,
-    // last), then the computed key_type would use all the bits
-    // provided, and wouldn't gratuitously produce the same
-    // counter when given "obviously" different inputs.
     template <typename It>
-    key_type make_key_from_32bitrange(It& first, It last){
-        const size_t n32 = (KeyTraits::Nbits+31)/32;
-        uint32_t a[n32];
-        detail::fill_array_int<32>(first, last, a);
-        return KeyTraits::make_counter(&a[0], &a[n32]);
+    key_type make_key_from_range(It first, It last, It *endp){
+#if 1
+        // This is here because test_iterator_seed in
+        // test_generator.ipp demands it.  But it serves no useful
+        // purpose.  KeyTraits::make_counter safely and correctly pads
+        // with zeros if there aren't enough values in the range.
+        // There's no reason to throw an exception.
+        typedef typename std::iterator_traits<It>::value_type it_value_type;
+        const unsigned it_value_bits = std::numeric_limits<it_value_type>::digits + std::numeric_limits<it_value_type>::is_signed;
+        if( std::distance(first, last)*it_value_bits < KeyTraits::Nbits )
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine: not enough bits in range"));
+#endif
+        // Note that unlike all(?) other engines, the construct-from-range
+        // and seed-from-range methods of counter_based_engine use *all*
+        // the bits in the given range.  They do not gratuitously and
+        // unnecessarily truncate the values to [0, 2^32).  Thankfully,
+        // this does not trip over any checks in test_generator.ipp.
+        return KeyTraits::make_counter(first, last, endp);
     }
 
 public:
@@ -176,7 +172,18 @@ public:
     }
 
     template<class It> counter_based_engine(It& first, It last)
-        : b(chk_highkeybits(make_key_from_32bitrange(first, last)))
+        // N.B.  does *NOT* throw if there are non-zero values
+        // in the 'leftover' part of the range.  CALLER BEWARE!
+        : b(chk_highkeybits(make_key_from_range(first, last, &first)))
+    {
+        //std::cerr << "cbe(range)\n";
+        initialize();
+    }
+
+    template<class It> counter_based_engine(const It& first, It last)
+        // N.B.  throws an invalid_argument if there are non-zero
+        // values in the 'leftover' part of the range.
+        : b(chk_highkeybits(make_key_from_range(first, last, 0)))
     {
         //std::cerr << "cbe(range)\n";
         initialize();
@@ -204,7 +211,20 @@ public:
     template<class It>
     void seed(It& first, It last){
         //std::cerr << "cbe::seed(range)\n";
-        b.setkey(chk_highkeybits(make_key_from_32bitrange(first, last)));
+        //
+        // N.B.  does *NOT* throw if there are non-zero values
+        // in the 'leftover' part of the range.  CALLER BEWARE!
+        b.setkey(chk_highkeybits(make_key_from_range(first, last, &first)));
+        initialize();
+    }
+
+    template<class It>
+    void seed(const It& first, It last){
+        //std::cerr << "cbe::seed(range)\n";
+        //
+        // N.B.  throws an invalid_argument if there are non-zero
+        // values in the 'leftover' part of the range.
+        b.setkey(chk_highkeybits(make_key_from_range(first, last, 0)));
         initialize();
     }
 

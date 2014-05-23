@@ -76,10 +76,7 @@ struct counter_traits{
     static CtrType make_counter(uintmax_t v);
 
     template <typename It>
-    static CtrType make_counter(It& first, It last);
-
-    template <typename It>
-    static CtrType make_counter(const It& first, It last);
+    static CtrType make_counter(It first, It last, It *endp);
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
     template <typename V>
@@ -200,30 +197,48 @@ public:
     // ??? What should the semantics of make_counter be???  The
     // primary consideration has to be avoidance of unintended
     // collisions.  If the caller assembles two ranges that *look*
-    // different, then they *must* produce different CounterTypes (or
-    // at least one should throw an exception).  It's a bit tricky to
-    // define ranges that 'look different':
+    // different, and invokes make_counter on them, then they *must*
+    // produce different CounterTypes (or at least one should throw an
+    // exception).  Let's define what we mean by two ranges that 'look
+    // different':
     //
-    //    First, (conceptually) extend the shorter one with zeros
-    //    until it's the same length as the longer.
+    //    First, conceptually pad both ranges with zeros up to the
+    //    length required for the CounterType.
     // 
     //    Then, compare them  element-by-element.  If any elements
     //    differ, then they 'look different'.
     //
-    // Furthermore, make_counter should use all the bits in the range.
-    // The caller controls the iterator's value_type and should be
-    // free to choose it to suit his needs.  Having chosen a
-    // value_type, the caller should be permitted to use all its
-    // values.  There's no reason for make_counter to restrict the
-    // caller to using only the low 32 bits of the value_type.
+    // Notice that this rule demands that make_counter consider all
+    // the bits in the range.  The caller controls the iterator's
+    // value_type and is free to choose it to suit his needs.  If the
+    // caller finds it convenient to have 64-bit value_types, then
+    // make_counter must not silently map ranges that 'look different'
+    // to the caller into identical CtrTypes.  In particular,
+    // make_counter must not gratuitously mask off high bits (above
+    // the 32nd) of the range's value_type.
+    //
+    // By the above definition, two ranges don't 'look different' if
+    // they differ only in elements that are unconsumed by
+    // make_counter.  The caller can detect this by looking at the
+    // value stored in *endp.  Whether the caller does or not is out
+    // of our control, but existing practice seems to be to encourage
+    // the dubious practice of providing extra-long ranges when
+    // seeding engines, e.g., in test_seed_iterator.
+    //
+    // On the other hand, if invoked with endp==0, then the caller
+    // can't detect unconsumed values, so in that case, make_counter
+    // throws an invalid_argument if there are non-zero elements in
+    // the unconsumed part of the range.  Use of the default endp==0
+    // is much safer and is strongly encouraged.
+    //
     template <typename It>
-    static CtrType make_counter(It& first, It last){
-        CtrType ret;
+    static CtrType make_counter(It first, It last, It* endp=0){
         typedef typename std::iterator_traits<It>::value_type it_value_type;
         BOOST_STATIC_ASSERT(std::numeric_limits<it_value_type>::is_integer);
         BOOST_STATIC_ASSERT(std::numeric_limits<it_value_type>::radix == 2);
         const unsigned it_value_bits = std::numeric_limits<it_value_type>::digits + std::numeric_limits<it_value_type>::is_signed;
         BOOST_STATIC_ASSERT(value_bits%it_value_bits==0 || it_value_bits%value_bits==0);
+        CtrType ret;
         it_value_type itv;
         if( it_value_bits == value_bits ){
             for(std::size_t j = 0; j < N; j++) {
@@ -253,23 +268,23 @@ public:
                 itv >>= shift;
             }
         }
-        while( first != last ){
-            if( *first++ )
-                BOOST_THROW_EXCEPTION(std::invalid_argument("make_counter:  non-zero elements in the range that don't fit in the counter"));
+        if(endp)
+            *endp = first;
+        else{
+            // If the caller isn't interested in endp, then don't
+            // permit non-zero values in the leftover range.
+            while( first != last ){
+                if( *first++ )
+                    BOOST_THROW_EXCEPTION(std::invalid_argument("non-zero values in range ignored"));
+            }
         }
         return ret;
-    }
-
-    template <typename It>
-    static CtrType make_counter(const It& first, It last){
-        It _first = first;
-        return make_counter(_first, last);
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
     template <typename V>
     static CtrType make_counter(std::initializer_list<V> il){
-        return make_counter(il.begin(), il.end());
+        return  make_counter(il.begin(), il.end());
     }
 #endif
 

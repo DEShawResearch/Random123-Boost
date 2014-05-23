@@ -67,19 +67,23 @@ struct counter_traits<__m128i>{
     }
 
     template <typename It>
-    static __m128i make_counter(It& first, It last){
+    static __m128i make_counter(It first, It last, It* endp=0){
         union{
             uint32_t a[4];
             __m128i m;
         } u;
         detail::fill_array_int<32>(first, last, u.a);
+        if(endp)
+            *endp = first;
+        else{
+            // If the caller isn't interested in endp, then don't
+            // permit non-zero values in the leftover range.
+            while( first != last ){
+                if( *first++ )
+                    BOOST_THROW_EXCEPTION(std::invalid_argument("non-zero values in range ignored"));
+            }
+        }
         return u.m;
-    }
-
-    template <typename It>
-    static __m128i make_counter(const It& first, It last){
-        It _first = first;
-        return make_counter(_first, last);
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)

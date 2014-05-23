@@ -115,9 +115,9 @@ void do_threefry(int iter){
   // *much lower* (3x) performance for some of the other functions.
   // Wild guess - we've hit some limit meant to prevent too much
   std::cout << "Threefry: with recommended safety margin\n";
-  run_cbeng<uint64_t, threefry<4, uint64_t> >("threefry4x64", iter);
-  run_cbeng<uint32_t, threefry<4, uint64_t> >("threfry4x64/32", iter);
-  run_cbeng<uint32_t, threefry<2, uint32_t> >("threefry2x32", iter);
+  //run_cbeng<uint64_t, threefry<4, uint64_t> >("threefry4x64", iter);
+  //run_cbeng<uint32_t, threefry<4, uint64_t> >("threfry4x64/32", iter);
+  //run_cbeng<uint32_t, threefry<2, uint32_t> >("threefry2x32", iter);
   //run_cbeng<uint32_t, threefry<4, uint32_t> >("threefry4x32", iter);
   //run_cbeng<uint64_t, threefry<2, uint64_t> >("threefry2x64", iter);
 
