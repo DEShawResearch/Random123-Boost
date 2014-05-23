@@ -24,6 +24,9 @@
 # #            intel/ccompxe/2011.2.137-05/icc/bin
 # #export CXX=icpc
 #
+# #garden load llvm_clang/3.4-06/bin
+# #export CXX=clang++
+#
 # garden strip-colons
 #
 # make -f "$0" "$@"
@@ -51,6 +54,13 @@ CXXFLAGS+=-diag-disable 411 # 'class template defines no constructor to initiali
 gcclib=$(shell $(newgcc) --print-file-name=libstdc++.so)
 LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
+
+else ifeq ($(CXX),clang++)
+OPTIMIZE= -ggdb3 -O3
+COMMONFLAGS=-Wall $(OPTIMIZE) -march=native
+CXXFLAGS+=$(COMMONFLAGS) -std=c++03
+CXXFLAGS+=-Wno-unsequenced
+
 else # g++
 
 OPTIMIZE= -ggdb3 -O3

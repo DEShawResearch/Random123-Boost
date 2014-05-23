@@ -253,10 +253,12 @@ public:
                 itv >>= shift;
             }
         }
+#if 0
         while( first != last ){
             if( *first++ )
                 BOOST_THROW_EXCEPTION(std::invalid_argument("make_counter:  non-zero elements in the range that don't fit in the counter"));
         }
+#endif
         return ret;
     }
 

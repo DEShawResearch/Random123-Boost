@@ -108,6 +108,31 @@ protected:
         return set_highkeybits(KeyTraits::_make_counter_from_seedseq(seq));
     }
 
+    // This is wrong.  But it's necessary to satisfy the
+    // test_iterator_seed tests in test_generator.ipp.  Why is it so
+    // wrong?  Because it goes out of its way to introduce surprising
+    // and completely unnecessary collisions:
+    //    uint64_t s[1], *b;
+    //    s[0] = 0x876543210;
+    //    b = &s[0];
+    //    cbe1.seed(b, b+1);
+    //    s[0] = 0x76543210;  // seed looks different
+    //    b = &s[0];
+    //    cbe2.seed(b, b+1);
+    //    assert( cbe == cbe2 ); // produces the same cbe!!
+    //
+    // If instead, we just called KeyTraits::make_counter(first,
+    // last), then the computed key_type would use all the bits
+    // provided, and wouldn't gratuitously produce the same
+    // counter when given "obviously" different inputs.
+    template <typename It>
+    key_type make_key_from_32bitrange(It& first, It last){
+        const size_t n32 = (KeyTraits::Nbits+31)/32;
+        uint32_t a[n32];
+        detail::fill_array_int<32>(first, last, a);
+        return KeyTraits::make_counter(&a[0], &a[n32]);
+    }
+
 public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type min BOOST_PREVENT_MACRO_SUBSTITUTION () { return 0; }
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return low_bits_mask_t<w>::sig_bits; }
@@ -151,7 +176,7 @@ public:
     }
 
     template<class It> counter_based_engine(It& first, It last)
-        : b(chk_highkeybits(KeyTraits::make_counter(first, last)))
+        : b(chk_highkeybits(make_key_from_32bitrange(first, last)))
     {
         //std::cerr << "cbe(range)\n";
         initialize();
@@ -179,7 +204,7 @@ public:
     template<class It>
     void seed(It& first, It last){
         //std::cerr << "cbe::seed(range)\n";
-        b.setkey(chk_highkeybits(KeyTraits::make_counter(first, last)));
+        b.setkey(chk_highkeybits(make_key_from_32bitrange(first, last)));
         initialize();
     }
 
