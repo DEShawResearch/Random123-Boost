@@ -40,6 +40,7 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 CPPFLAGS+= -I../../..
 LDLIBS+= -lboost_unit_test_framework # -lgmpxx -lgmp #-lcrypto
+OPTIMIZE=-ggdb -O3
 
 ifeq ($(CXX),icpc)
 # To get icpc to work with boost we have to link against
@@ -56,14 +57,12 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 
 else ifeq ($(CXX),clang++)
-OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native
 CXXFLAGS+=$(COMMONFLAGS) -std=c++03
 CXXFLAGS+=-Wno-unsequenced
 
 else # g++
 
-OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 CXXFLAGS+=$(COMMONFLAGS) -std=c++03
 CFLAGS+=$(COMMONFLAGS) -std=gnu99

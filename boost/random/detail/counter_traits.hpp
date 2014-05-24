@@ -318,6 +318,8 @@ public:
             if(*p++)
                 return d;
         }
+        if(p == d.rend())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
         *p += incr_stride;
         if(*p < incr_stride)
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
@@ -328,7 +330,7 @@ public:
     static CtrType incr(CtrType d, boost::uintmax_t n){
         BOOST_STATIC_ASSERT(HighBits <= Nbits);
         BOOST_STATIC_ASSERT(HighBits > 0);
-        BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
+        BOOST_STATIC_CONSTANT(T, incr_stride = high_bit_mask_t<(Nbits - HighBits)%value_bits>::high_bit);
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
         // FullCtrWords&& silences a bogus warning from icpc.  Consider -diag-disable 186 instead.
@@ -344,11 +346,12 @@ public:
         // ??? - does this correctly detect all the overflow cases ???
         if(n==0)
             return d;
-        if(n*incr_stride < incr_stride)
-            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
-        *p += n*incr_stride;
-        if(*p < incr_stride)
-            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(): ran out of counters"));
+        const T nstride = n*incr_stride;
+        if(nstride < incr_stride || p==d.rend())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(n): ran out of counters"));
+        *p += nstride;
+        if(*p < nstride)
+            BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(n): ran out of counters"));
         return d;
     }
 
