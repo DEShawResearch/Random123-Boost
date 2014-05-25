@@ -40,7 +40,7 @@ LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 CPPFLAGS+= -I../../..
 LDLIBS+= -lboost_unit_test_framework # -lgmpxx -lgmp #-lcrypto
-OPTIMIZE=-ggdb -O0
+OPTIMIZE=-ggdb -O3
 
 ifeq ($(CXX),icpc)
 # To get icpc to work with boost we have to link against
