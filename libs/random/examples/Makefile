@@ -35,6 +35,7 @@ All:
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 CPPFLAGS+= -I../../..
+OPTIMIZE= -ggdb3 -O3
 
 ifeq ($(CXX),icpc)
 # To get icpc to work with boost we have to link against
@@ -48,7 +49,6 @@ LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
 else # g++
 
-OPTIMIZE= -ggdb3 -O3
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 #CXXFLAGS+=$(COMMONFLAGS) -std=c++03
 CXXFLAGS+=$(COMMONFLAGS) -std=c++11

@@ -251,9 +251,11 @@ public:
         }else if( it_value_bits < value_bits ){
             for(std::size_t j = 0; j < N; j++) {
                 T val = 0;
+                unsigned lshift = 0;
                 for(std::size_t k = 0; k < value_bits/it_value_bits; ++k) {
                     itv = (first != last) ? *first++ : 0;
-                    val = (val << it_value_bits) | static_cast<T>(itv);
+                    val |= static_cast<T>(itv) << lshift;
+                    lshift += it_value_bits;
                 }
                 ret[j] = val;
             }
