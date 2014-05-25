@@ -94,8 +94,11 @@ struct counter_traits{
     template <unsigned HighBits>
     static CtrType incr(CtrType d, boost::uintmax_t n);
 
+    template <unsigned w>
+    static std::size_t size();
+
     template <typename result_type, unsigned w>
-    static result_type nth_result(unsigned n, CtrType v);
+    static result_type at(std::size_t n, CtrType v);
 
     // _make_counter_from_seedseq - used by counter_based_engine
     //   because counter_based_engine is obliged to provide SeedSeq
@@ -330,7 +333,9 @@ public:
     static CtrType incr(CtrType d, boost::uintmax_t n){
         BOOST_STATIC_ASSERT(HighBits <= Nbits);
         BOOST_STATIC_ASSERT(HighBits > 0);
-        BOOST_STATIC_CONSTANT(T, incr_stride = high_bit_mask_t<(Nbits - HighBits)%value_bits>::high_bit);
+        BOOST_STATIC_CONSTANT(unsigned, lastword_loctrbit = (Nbits - HighBits)%value_bits);
+        BOOST_STATIC_CONSTANT(T, lastword_stride = high_bit_mask_t<lastword_loctrbit>::high_bit);
+        BOOST_STATIC_CONSTANT(boost::uintmax_t, lastword_maxn = low_bits_mask_t<value_bits-lastword_loctrbit>::sig_bits);
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
         // FullCtrWords&& silences a bogus warning from icpc.  Consider -diag-disable 186 instead.
@@ -343,30 +348,36 @@ public:
             if(n==0)
                 return d;
         }
-        // ??? - does this correctly detect all the overflow cases ???
-        if(n==0)
-            return d;
-        const T nstride = n*incr_stride;
-        if(nstride < incr_stride || p==d.rend())
+        if( n > lastword_maxn || p==d.rend() )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(n): ran out of counters"));
-        *p += nstride;
-        if(*p < nstride)
+        n *= lastword_stride;
+        *p += n;
+        if(*p < n)
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_traits::incr(n): ran out of counters"));
         return d;
     }
 
+    template <unsigned w>
+    static std::size_t size(){
+        if( w <= value_bits ){
+            return N*( value_bits/w );
+        }else{
+            return N/ ((w+value_bits-1)/value_bits);
+        }
+    }
+
     template <typename result_type, unsigned w>
-    static result_type nth_result(unsigned n, CtrType v){
+    static result_type at(std::size_t n, CtrType v){
         result_type r;
         if( w == value_bits ){
-            return v[n];
+            return static_cast<result_type>(v[n]);
         }else if( w < value_bits ){
             const unsigned  results_per_rangeval = value_bits/w;
             const unsigned idx = n/results_per_rangeval;
             const unsigned shift = (n%results_per_rangeval)*w;
             const typename CtrType::value_type r = v[ idx ];
             const result_type wmask = low_bits_mask_t<w>::sig_bits;
-            return (r >> shift)&wmask;
+            return static_cast<result_type>(r >> shift)&wmask;
         }else{
             unsigned idx = (n*w)/value_bits;
             r = v[idx++];
@@ -378,7 +389,7 @@ public:
             for(unsigned i=1; i<imax; ++i){
                 r = (r<<shift) | v[idx++];
             }
-            return r;
+            return static_cast<result_type>(r);
         }
     }
 

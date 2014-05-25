@@ -137,8 +137,14 @@ public:
         return d;
     }
 
+    template<unsigned w>
+    static std::size_t size(){
+        BOOST_STATIC_ASSERT(w==32 || w==64);
+        return 128/w;
+    }
+
     template <typename result_type, unsigned w>
-    static result_type nth_result(unsigned n, __m128i v){
+    static result_type at(std::size_t n, __m128i v){
         BOOST_STATIC_ASSERT(w==32 || w==64);
         switch(w){
         case 32:

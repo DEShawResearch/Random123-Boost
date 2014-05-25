@@ -58,8 +58,9 @@ protected:
     BOOST_STATIC_ASSERT(CtrBits > 0);
 
     BOOST_STATIC_ASSERT( std::numeric_limits<UintType>::digits >= w );
-    BOOST_STATIC_ASSERT( RangeTraits::Nbits%w == 0 );
-    BOOST_STATIC_CONSTANT(unsigned, Nresult = RangeTraits::Nbits/w);
+    static unsigned Nresult(){
+        return RangeTraits::template size<w>();
+    }
 
     BOOST_STATIC_CONSTANT(unsigned, CtrBitsBits = static_log2<DomainTraits::Nbits>::value);
 
@@ -69,7 +70,7 @@ protected:
     unsigned next;
 
     void setnext(unsigned n){
-        if( n != Nresult ){
+        if( n != Nresult() ){
             v = b(c);
         }
         next = n;
@@ -77,7 +78,7 @@ protected:
 
     void initialize(){
         c = DomainTraits::make_counter();
-        next = Nresult;
+        next = Nresult();
     }
 
     // We avoid collisions between engines with different CtrBits by
@@ -134,18 +135,18 @@ public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return low_bits_mask_t<w>::sig_bits; }
 
     counter_based_engine()
-        : b(), c(), next(Nresult)
+        : b(), c(), next(Nresult())
     {
         //std::cerr << "cbe()\n";
         initialize();
     }
 
-    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Nresult){
+    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Nresult()){
         //std::cerr << "cbe(counter_based_engine&)\n";
         setnext(e.next);
     }
 
-    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Nresult){
+    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Nresult()){
         //std::cerr << "cbe(const counter_based_engine&)\n";
         setnext(e.next);
     }
@@ -259,19 +260,19 @@ public:
     }
 
     result_type operator()(){
-        if( next == Nresult ){
+        if( next == Nresult() ){
             c = DomainTraits::template incr<CtrBits>(c);
             v = b(c);
             next = 0;
         }
-        return RangeTraits::template nth_result<result_type, w>(next++, v);
+        return RangeTraits::template at<result_type, w>(next++, v);
     }
 
     void discard(boost::uintmax_t skip){
-	size_t newnext = next + (skip % Nresult);
-        skip /= Nresult;
-        if (newnext > Nresult) {
-            newnext -= Nresult;
+	size_t newnext = next + (skip % Nresult());
+        skip /= Nresult();
+        if (newnext > Nresult()) {
+            newnext -= Nresult();
 	    skip++;
         }
         c = DomainTraits::template incr<CtrBits>(c, skip);
@@ -296,7 +297,7 @@ public:
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
             
         c = start;
-        next = Nresult;
+        next = Nresult();
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
@@ -312,12 +313,12 @@ public:
     // because the high bits are reserved for use by the engine to
     // disambiguate engines created with different CounterBits.
     explicit counter_based_engine(key_type k, domain_type base = DomainTraits::make_counter()) : 
-        b(chk_highkeybits(k)), c(base), next(Nresult){
+        b(chk_highkeybits(k)), c(base), next(Nresult()){
         if( DomainTraits::template clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
     }
 
-    explicit counter_based_engine(const Prf& _b, domain_type base = DomainTraits::make_counter()) : b(_b), c(base), next(Nresult){
+    explicit counter_based_engine(const Prf& _b, domain_type base = DomainTraits::make_counter()) : b(_b), c(base), next(Nresult()){
         chk_highkeybits(b.getkey());
         if( DomainTraits::clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
