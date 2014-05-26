@@ -44,16 +44,15 @@ struct counter_based_engine {
     typedef Prf prf_type;
     BOOST_STATIC_CONSTANT(unsigned, counter_bits = CtrBits);
     BOOST_STATIC_CONSTANT(unsigned, word_size = w);
+    typedef typename Prf::domain_type domain_type;
+    typedef typename Prf::range_type range_type;
+    typedef typename Prf::key_type key_type;
     typedef DomainTraits domain_traits;
     typedef RangeTraits range_traits;
     typedef KeyTraits key_traits;
     BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
 
 protected:
-    typedef typename Prf::range_type range_type;
-    typedef typename Prf::domain_type domain_type;
-    typedef typename Prf::key_type key_type;
-
     BOOST_STATIC_ASSERT(CtrBits <= DomainTraits::Nbits);
     BOOST_STATIC_ASSERT(CtrBits > 0);
 
@@ -89,10 +88,10 @@ protected:
     // overlapping streams.
     //
     // When we accept a key from the user, e.g., seed(arithmetic) or
-    // seed(CtrType), it is an error if the specified value has any
-    // high bits set.  On the other hand, it's not an error if
-    // seed_seq.generate() sets those bits -- we just ignore them.
-
+    // seed(key_type), an exception is thrown by chk_highkeybits if
+    // the specified key has any high bits set.  On the other hand,
+    // set_highkeybits, which is called by the seed_seq constructor
+    // and seeder quiet ignores high bits in its argument.
     key_type chk_highkeybits(key_type k){
         if( KeyTraits::template clr_highbits<CtrBitsBits>(k) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
@@ -158,7 +157,16 @@ public:
         return *this;
     }
 
-    BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, result_type, value)
+    // Note that the arithmetic constructor (and seed method, below)
+    // takes a uintmax_t, which may be wider than a result_type.
+    // Normal arithmetic promotions allow the caller to provide a
+    // result_type, but counter_based_engine does not unnecessarily
+    // restrict the range of possible seeds to the width of a
+    // result_type.  The constructor (and seed method) throw if the
+    // value contains bits that can't be set in the seed, e.g.,
+    //
+    //    counter_based_engine<uint32_t, philox<2, uint32_t> >(1ull<<33);
+    BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, boost::uintmax_t, value)
         : b(chk_highkeybits(KeyTraits::make_counter(value)))
     { 
         //std::cerr << "cbe(result_type)\n";
@@ -196,7 +204,7 @@ public:
         initialize();
     }
 
-    BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, result_type, value)
+    BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, boost::uintmax_t, value)
     { 
         //std::cerr << "cbe::seed(arithmetic)\n";
         b.setkey(chk_highkeybits(KeyTraits::make_counter(value)));
