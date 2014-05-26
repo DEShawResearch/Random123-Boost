@@ -56,7 +56,6 @@ uint1024_t get_sample_counter(BOOST_RANDOM_URNG& urng)
         counter <<= dvalbits;
         counter += digit;
     }
-    --counter; // the counter starts at one, here we make it zero based
     
     counter &= (uint1024_t(1)<<ctrbits) - 1;
     counter = counter * ndomain + subcounter;
@@ -91,7 +90,6 @@ void set_sample_counter(BOOST_RANDOM_URNG& urng, uint1024_t counter)
     newstate << (counter % ndomain);
 
     counter /= ndomain;
-    ++counter;
     
     int bits_already_set = 0;
     for (int i=ndomain-1; i>=0; --i) {

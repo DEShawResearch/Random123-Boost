@@ -10,7 +10,6 @@
 #include <boost/array.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/limits.hpp>
-#include <boost/random/seed_seq.hpp>
 #include <boost/random/detail/seed.hpp>
 #include <boost/random/detail/seed_impl.hpp>
 #include <boost/random/detail/operators.hpp>
@@ -41,26 +40,25 @@ template<typename UintType,
 >
 struct counter_based_engine {
     typedef UintType result_type;
+    BOOST_STATIC_CONSTANT(unsigned, word_size = w);
+    BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
+
+    // The following typedefs *extend* the standard
+    // Random Number Engine concept.
     typedef Prf prf_type;
     BOOST_STATIC_CONSTANT(unsigned, counter_bits = CtrBits);
-    BOOST_STATIC_CONSTANT(unsigned, word_size = w);
     typedef typename Prf::domain_type domain_type;
     typedef typename Prf::range_type range_type;
     typedef typename Prf::key_type key_type;
     typedef DomainTraits domain_traits;
     typedef RangeTraits range_traits;
     typedef KeyTraits key_traits;
-    BOOST_STATIC_CONSTANT(bool, has_fixed_range = false);
 
 protected:
     BOOST_STATIC_ASSERT(CtrBits <= DomainTraits::Nbits);
     BOOST_STATIC_ASSERT(CtrBits > 0);
 
     BOOST_STATIC_ASSERT( std::numeric_limits<UintType>::digits >= w );
-    static unsigned Nresult(){
-        return RangeTraits::template size<w>();
-    }
-
     BOOST_STATIC_CONSTANT(unsigned, CtrBitsBits = static_log2<DomainTraits::Nbits>::value);
 
     prf_type b;
@@ -69,7 +67,7 @@ protected:
     unsigned next;
 
     void setnext(unsigned n){
-        if( n != Nresult() ){
+        if( n != 0 ){
             v = b(c);
         }
         next = n;
@@ -77,7 +75,7 @@ protected:
 
     void initialize(){
         c = DomainTraits::make_counter();
-        next = Nresult();
+        next = 0;
     }
 
     // We avoid collisions between engines with different CtrBits by
@@ -91,7 +89,7 @@ protected:
     // seed(key_type), an exception is thrown by chk_highkeybits if
     // the specified key has any high bits set.  On the other hand,
     // set_highkeybits, which is called by the seed_seq constructor
-    // and seeder quiet ignores high bits in its argument.
+    // and seeder, quietly ignores high bits in its argument.
     key_type chk_highkeybits(key_type k){
         if( KeyTraits::template clr_highbits<CtrBitsBits>(k) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
@@ -134,18 +132,18 @@ public:
     BOOST_RANDOM_DETAIL_CONSTEXPR static result_type max BOOST_PREVENT_MACRO_SUBSTITUTION () { return low_bits_mask_t<w>::sig_bits; }
 
     counter_based_engine()
-        : b(), c(), next(Nresult())
+        : b()
     {
         //std::cerr << "cbe()\n";
         initialize();
     }
 
-    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c), next(Nresult()){
+    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c){
         //std::cerr << "cbe(counter_based_engine&)\n";
         setnext(e.next);
     }
 
-    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c), next(Nresult()){
+    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c){
         //std::cerr << "cbe(const counter_based_engine&)\n";
         setnext(e.next);
     }
@@ -165,7 +163,9 @@ public:
     // result_type.  The constructor (and seed method) throw if the
     // value contains bits that can't be set in the seed, e.g.,
     //
-    //    counter_based_engine<uint32_t, philox<2, uint32_t> >(1ull<<33);
+    //    counter_based_engine<uint32_t, philox<2, uint32_t> >(1ull<<28);
+    // or
+    //    counter_based_engine<uint32_t, philox<4, uint32_t> >(1ull<<60);
     BOOST_RANDOM_DETAIL_ARITHMETIC_CONSTRUCTOR(counter_based_engine, boost::uintmax_t, value)
         : b(chk_highkeybits(KeyTraits::make_counter(value)))
     { 
@@ -268,19 +268,22 @@ public:
     }
 
     result_type operator()(){
-        if( next == Nresult() ){
+        if( next == results_per_counter() ){
             c = DomainTraits::template incr<CtrBits>(c);
-            v = b(c);
             next = 0;
+        }
+        if( next == 0 ){
+            v = b(c);
         }
         return RangeTraits::template at<result_type, w>(next++, v);
     }
 
     void discard(boost::uintmax_t skip){
-	size_t newnext = next + (skip % Nresult());
-        skip /= Nresult();
-        if (newnext > Nresult()) {
-            newnext -= Nresult();
+        const size_t Nresult = results_per_counter();
+	size_t newnext = next + (skip % Nresult);
+        skip /= Nresult;
+        if (newnext >= Nresult) {
+            newnext -= Nresult;
 	    skip++;
         }
         c = DomainTraits::template incr<CtrBits>(c, skip);
@@ -292,10 +295,13 @@ public:
     { detail::generate_from_int(*this, first, last); }
 
     // The member functions below *extend* the standard Random Number
-    // Engine concept.  They provide the ability to quickly 'restart'
-    // the engine with a new 'base counter'.  Restart is very fast,
-    // and restarted engines will produce independent sequences as
-    // long as thier 'base counters' differ in at least one bit.
+    // Engine concept.  
+    //
+    // The restart method, along with additional constructors and
+    // seeders allow the caller to quickly 'restart' the engine with a
+    // new 'base counter'.  Restart is very fast, and restarted
+    // engines will produce independent sequences as long as thier
+    // 'base counters' differ in at least one bit.
 
     // restart - restart the counter with a new 'base counter' without
     //  touching the Prf or its key.  The counter is reset so there
@@ -305,7 +311,7 @@ public:
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
             
         c = start;
-        next = Nresult();
+        next = 0;
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
@@ -317,16 +323,14 @@ public:
 
     // Constructor and seed() method to construct or re-seed a
     // counter_based_engine from a key or a Prf and an optional base
-    // counter.  It's an error to specify a key with high bits set
-    // because the high bits are reserved for use by the engine to
-    // disambiguate engines created with different CounterBits.
+    // counter.
     explicit counter_based_engine(key_type k, domain_type base = DomainTraits::make_counter()) : 
-        b(chk_highkeybits(k)), c(base), next(Nresult()){
+        b(chk_highkeybits(k)), c(base), next(){
         if( DomainTraits::template clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
     }
 
-    explicit counter_based_engine(const Prf& _b, domain_type base = DomainTraits::make_counter()) : b(_b), c(base), next(Nresult()){
+    explicit counter_based_engine(const Prf& _b, domain_type base = DomainTraits::make_counter()) : b(_b), c(base), next(){
         chk_highkeybits(b.getkey());
         if( DomainTraits::clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine base counter overlaps with counter bits"));
@@ -342,7 +346,12 @@ public:
         *this = counter_based_engine(_b, base);
     }        
 
-
+    // results_per_counter - returns the number of random results made
+    //  available by each invocation of the prf.  The total length of
+    //  the sequence is results_per_counter() * 2^counter_bits.
+    static unsigned results_per_counter(){
+        return RangeTraits::template size<w>();
+    }
 };
 
 } // namespace random
