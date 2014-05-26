@@ -19,9 +19,12 @@ namespace std{ // why??
 template <typename T, std::size_t N>
 std::ostream& operator<<(std::ostream& os, const ::boost::array<T,N>& a){
     //boost::io::ios_flags_saver(os); // unnecessary?
+    // N.B.  this looks pretty awful... More manipulators??  spaces?
     os << std::hex;
-    for(size_t i=0; i<a.size(); ++i)
+    for(size_t i=0; i<a.size(); ++i){
         boost::test_tools::print_log_value<T>()(os, a[i]);
+        if(i!=a.size()) os << ' ';
+    }
     return os;
 }
 }

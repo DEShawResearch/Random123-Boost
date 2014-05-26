@@ -161,6 +161,31 @@ void test_highbits(){
         }
     }
     //std::cerr << "count : " << count << "\n";
+
+    // Create a range argument for make_counter(range) that carefully
+    // avoids tickling the HighBits
+    const unsigned non_counter_bits = Traits::Nbits - HighBits;
+    const unsigned non_counter_bytes = (non_counter_bits+7)/8;
+    const unsigned bits_last = non_counter_bits - 8*(non_counter_bytes-1);
+    const uint8_t ff = std::numeric_limits<uint8_t>::max();
+    std::vector<uint8_t> bytearray(non_counter_bytes, ff);
+    if( non_counter_bytes ){
+        bytearray.back() = low_bits_mask_t<bits_last>::sig_bits;
+    }
+    a = Traits::make_counter(bytearray.begin(), bytearray.end());
+    BOOST_CHECK( !Traits::template clr_highbits<HighBits>(a) );
+    //  No carefully tickle the first HighBit.
+    if( non_counter_bytes && bytearray.back() != ff ){
+        bytearray.back() <<= 1;
+        bytearray.back() += 1;
+    }else{
+        bytearray.push_back(1);
+    }
+    b = Traits::make_counter(bytearray.begin(), bytearray.end());
+    // Check that b has high bits set.
+    BOOST_CHECK( Traits::template clr_highbits<HighBits>(b) );
+    // and that after clr_highbits, it's the same as a.
+    BOOST_CHECK_NE(b, a);
 }
 
 template <typename UintType, unsigned N, typename result_type, unsigned w>
