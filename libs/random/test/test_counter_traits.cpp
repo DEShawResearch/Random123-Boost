@@ -185,12 +185,40 @@ void test_highbits(){
     // Check that b has high bits set.
     BOOST_CHECK( Traits::template clr_highbits<HighBits>(b) );
     // and that after clr_highbits, it's the same as a.
-    BOOST_CHECK_NE(b, a);
+    BOOST_CHECK_EQUAL(b, a);
 }
 
 template <typename UintType, unsigned N, typename result_type, unsigned w>
 void test_nth(){
-    BOOST_CHECK_EQUAL(1, 1);
+# if 0 // not ready yet
+    typedef array<UintType, N> CtrType;
+    typedef random::detail::counter_traits<CtrType> Traits;
+    std::vector<uint8_t> bytearray((Traits::Nbits+7)/8);
+    for(size_t i=0; i<bytearray.size(); ++i){
+        bytearray[i] = i+1;
+    }
+    std::vector<uint8_t>::iterator b = bytearray.begin();
+    CtrType a = Traits::make_counter(b, bytearray.end());
+    std::cout << "test_nth<N=" << N << ", w=" << w << "> Nbits=" << Traits::Nbits << "\n";
+    std::cout << std::hex; 
+    for(size_t n=0; n<Traits::template size<w>(); ++n){
+        result_type r = Traits::template at<result_type, w>(n, a);
+        std::cout << std::hex << "r: " << r << "\n";
+        unsigned bytes_per_result = w/8;
+        unsigned results_per_elem = (N+w-1)/w;
+        unsigned elem = n/results_per_elem;
+        unsigned inelem = n%results_per_elem;
+        result_type expected = 0;
+        result_type byte = elem * bytes_per_result + inelem + 1;
+        for(size_t j=0; j<bytes_per_result; ++j){
+            expected = expected + (byte<<(8*j));
+            byte++;
+        }
+        expected &= low_bits_mask_t<w>::sig_bits;
+        std::cout << std::hex << "ex: " << expected << "\n";
+        BOOST_CHECK_EQUAL(r, expected);
+    }
+#endif
 }
 } // namespace anon
 
@@ -259,6 +287,11 @@ BOOST_AUTO_TEST_CASE(highbit_varietypack)
 
 BOOST_AUTO_TEST_CASE(nth_varietypack)
 {
+    test_nth<uint32_t, 1, uint32_t, 9>();
+    test_nth<uint32_t, 2, uint32_t, 9>();
+    test_nth<uint32_t, 3, uint32_t, 9>();
+    test_nth<uint32_t, 4, uint32_t, 9>();
+
     test_nth<uint32_t, 4, uint32_t, 32>();
     test_nth<uint32_t, 4, uint64_t, 32>();
     test_nth<uint64_t, 4, uint32_t, 32>();
