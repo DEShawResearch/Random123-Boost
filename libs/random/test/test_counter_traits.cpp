@@ -7,7 +7,9 @@
 #include <boost/random/detail/counter_traits.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <boost/random/bernoulli_distribution.hpp>
 #include <sstream>
+#include <bitset>
 #include "printlogarray.hpp"
 
 #define BOOST_TEST_MAIN
@@ -190,35 +192,40 @@ void test_highbits(){
 
 template <typename UintType, unsigned N, typename result_type, unsigned w>
 void test_nth(){
-# if 0 // not ready yet
     typedef array<UintType, N> CtrType;
     typedef random::detail::counter_traits<CtrType> Traits;
-    std::vector<uint8_t> bytearray((Traits::Nbits+7)/8);
-    for(size_t i=0; i<bytearray.size(); ++i){
-        bytearray[i] = i+1;
+    // Create a random bitset
+    std::bitset<Traits::Nbits> bits;
+    // and a corresponding vector of bytes.
+    std::vector<uint8_t> bytes( (Traits::Nbits+7)/8 );
+    random::bernoulli_distribution<float> bernoulli;
+    for(size_t i=0; i<Traits::Nbits; ++i){
+        bits[i] = bernoulli(mt);
+        bytes[i/8] |= bits[i]<<(i%8);
     }
-    std::vector<uint8_t>::iterator b = bytearray.begin();
-    CtrType a = Traits::make_counter(b, bytearray.end());
-    std::cout << "test_nth<N=" << N << ", w=" << w << "> Nbits=" << Traits::Nbits << "\n";
-    std::cout << std::hex; 
+    // Initialize a with the random bytes.
+    std::vector<uint8_t>::iterator b = bytes.begin();
+    CtrType a = Traits::make_counter(b, bytes.end());
+    // Extract 'at' results of the given width, and
+    // compare with the original bitset.
+    const unsigned results_per_elem = Traits::template size<w>()/N;
+    const unsigned bits_per_elem = std::numeric_limits<UintType>::digits;
     for(size_t n=0; n<Traits::template size<w>(); ++n){
         result_type r = Traits::template at<result_type, w>(n, a);
-        std::cout << std::hex << "r: " << r << "\n";
-        unsigned bytes_per_result = w/8;
-        unsigned results_per_elem = (N+w-1)/w;
-        unsigned elem = n/results_per_elem;
-        unsigned inelem = n%results_per_elem;
-        result_type expected = 0;
-        result_type byte = elem * bytes_per_result + inelem + 1;
-        for(size_t j=0; j<bytes_per_result; ++j){
-            expected = expected + (byte<<(8*j));
-            byte++;
+        // which bits??
+        unsigned b;
+        if( results_per_elem ){
+            unsigned elem = n/results_per_elem;
+            b = elem * bits_per_elem + (n%results_per_elem)*w;
+        }else{
+            b = w*n;
         }
-        expected &= low_bits_mask_t<w>::sig_bits;
-        std::cout << std::hex << "ex: " << expected << "\n";
+        result_type expected = 0;
+        for(size_t j=0; j<w; ++j){
+            expected |= (result_type(bits[b++])<<j);
+        }
         BOOST_CHECK_EQUAL(r, expected);
     }
-#endif
 }
 } // namespace anon
 

@@ -389,7 +389,7 @@ public:
             // silence another bogus warning about comparison with 0
             const unsigned imax = (w>value_bits)?w/value_bits : 1;
             for(unsigned i=1; i<imax; ++i){
-                r = (r<<shift) | v[idx++];
+                r |= static_cast<result_type>(v[idx++]) << (i*shift);
             }
             return static_cast<result_type>(r);
         }
