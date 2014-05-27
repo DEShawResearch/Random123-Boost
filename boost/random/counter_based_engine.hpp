@@ -66,16 +66,12 @@ protected:
     range_type v;
     unsigned next;
 
-    void setnext(unsigned n){
-        if( n != 0 ){
-            v = b(c);
-        }
-        next = n;
-    }        
-
-    void initialize(){
-        c = DomainTraits::make_counter();
-        next = 0;
+    // new values for c and next, maintaining the
+    // invariant that v=b(c).
+    void setctr(domain_type newc, unsigned newnext){
+        c = newc;
+        v = b(c);
+        next = newnext;
     }
 
     // We avoid collisions between engines with different CtrBits by
@@ -135,33 +131,37 @@ public:
         : b()
     {
         //std::cerr << "cbe()\n";
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
-    counter_based_engine(counter_based_engine& e) : b(e.b), c(e.c){
+    counter_based_engine(counter_based_engine& e) 
+        : b(e.b)
+    {
         //std::cerr << "cbe(counter_based_engine&)\n";
-        setnext(e.next);
+        setctr(e.c, e.next);
     }
 
-    counter_based_engine(const counter_based_engine& e) : b(e.b), c(e.c){
+    counter_based_engine(const counter_based_engine& e) 
+        : b(e.b)
+    {
         //std::cerr << "cbe(const counter_based_engine&)\n";
-        setnext(e.next);
+        setctr(e.c,  e.next);
     }
 
     counter_based_engine& operator=(const counter_based_engine& rhs){
         b = rhs.b;
-        c = rhs.c;
-        setnext(rhs.next);
+        setctr(rhs.c, rhs.next);
         return *this;
     }
 
     // Note that the arithmetic constructor (and seed method, below)
     // takes a uintmax_t, which may be wider than a result_type.
-    // Normal arithmetic promotions allow the caller to provide a
-    // result_type, but counter_based_engine does not unnecessarily
-    // restrict the range of possible seeds to the width of a
-    // result_type.  The constructor (and seed method) throw if the
-    // value contains bits that can't be set in the seed, e.g.,
+    // Normal arithmetic promotions allow it to be called with a
+    // result_type argument, but counter_based_engine does not
+    // unnecessarily restrict the range of possible seeds to the width
+    // of a result_type.  The constructor (and seed method) throw if
+    // the value contains non-zero bits that are not allowed in the
+    // seed, e.g.,
     //
     //    counter_based_engine<uint32_t, philox<2, uint32_t> >(1ull<<28);
     // or
@@ -170,14 +170,14 @@ public:
         : b(chk_highkeybits(KeyTraits::make_counter(value)))
     { 
         //std::cerr << "cbe(result_type)\n";
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_CONSTRUCTOR(counter_based_engine, SeedSeq, seq)
         : b(make_key_from_seedseq(seq))
     {
         //std::cerr << "cbe(SeedSeq)\n";
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     template<class It> counter_based_engine(It& first, It last)
@@ -186,7 +186,7 @@ public:
         : b(chk_highkeybits(make_key_from_range(first, last, &first)))
     {
         //std::cerr << "cbe(range)\n";
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     template<class It> counter_based_engine(const It& first, It last)
@@ -195,26 +195,26 @@ public:
         : b(chk_highkeybits(make_key_from_range(first, last, 0)))
     {
         //std::cerr << "cbe(range)\n";
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     void seed(){
         //std::cerr << "cbe::seed()\n";
         b.setkey(KeyTraits::make_counter());
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     BOOST_RANDOM_DETAIL_ARITHMETIC_SEED(counter_based_engine, boost::uintmax_t, value)
     { 
         //std::cerr << "cbe::seed(arithmetic)\n";
         b.setkey(chk_highkeybits(KeyTraits::make_counter(value)));
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     BOOST_RANDOM_DETAIL_SEED_SEQ_SEED(counter_based_engine, SeedSeq, seq){
         //std::cerr << "cbe::seed(SeedSeq)\n" << "\n";
         b.setkey(make_key_from_seedseq(seq));
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     template<class It>
@@ -224,7 +224,7 @@ public:
         // N.B.  does *NOT* throw if there are non-zero values
         // in the 'leftover' part of the range.  CALLER BEWARE!
         b.setkey(chk_highkeybits(make_key_from_range(first, last, &first)));
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     template<class It>
@@ -234,7 +234,7 @@ public:
         // N.B.  throws an invalid_argument if there are non-zero
         // values in the 'leftover' part of the range.
         b.setkey(chk_highkeybits(make_key_from_range(first, last, 0)));
-        initialize();
+        setctr(DomainTraits::make_counter(), 0);
     }
 
     BOOST_RANDOM_DETAIL_EQUALITY_OPERATOR(counter_based_engine, lhs, rhs){ 
@@ -259,35 +259,35 @@ public:
         DomainTraits::extract(is, newc);
         key_type newk;
         KeyTraits::extract(is, newk);
-        if( !is )
-            return is;
-        f.c = newc;
-        f.b.setkey(newk);
-        f.setnext(newnext);
+        if( is ){
+            f.b.setkey(newk);
+            f.setctr(newc, newnext);
+        }
         return is;
     }
 
     result_type operator()(){
-        if( next == results_per_counter() ){
-            c = DomainTraits::template incr<CtrBits>(c);
-            next = 0;
-        }
-        if( next == 0 ){
-            v = b(c);
-        }
+        if( next == results_per_counter() )
+            setctr(DomainTraits::template incr<CtrBits>(c), 0);
         return RangeTraits::template at<result_type, w>(next++, v);
     }
 
     void discard(boost::uintmax_t skip){
-        const size_t Nresult = results_per_counter();
-	size_t newnext = next + (skip % Nresult);
+        const unsigned Nresult = results_per_counter();
+	unsigned newnext = next + (skip % Nresult);
         skip /= Nresult;
-        if (newnext >= Nresult) {
+        if (newnext > Nresult) {
             newnext -= Nresult;
 	    skip++;
         }
-        c = DomainTraits::template incr<CtrBits>(c, skip);
-        setnext(newnext);
+        // next==0 is a corner case that only occurs at the beginning
+        // of the sequence.  In order for operator== to work properly,
+        // we must disambiguate (next=0,c+1) from (next=Nresult, c) here.
+        if(newnext==0 && skip){
+            newnext = results_per_counter();
+            skip -= 1;
+        }
+        setctr(DomainTraits::template incr<CtrBits>(c, skip), newnext);
     }
          
     template <class Iter>
@@ -298,20 +298,21 @@ public:
     // Engine concept.  
     //
     // The restart method, along with additional constructors and
-    // seeders allow the caller to quickly 'restart' the engine with a
-    // new 'base counter'.  Restart is very fast, and restarted
-    // engines will produce independent sequences as long as thier
-    // 'base counters' differ in at least one bit.
+    // seeders allow the caller to quickly 'restart' the
+    // counter_based_engine with a new 'base counter'.  Restart is
+    // very fast, and restarted counter_based_engines will produce
+    // independent sequences as long as thier 'base counters' differ
+    // in at least one bit.
 
-    // restart - restart the counter with a new 'base counter' without
-    //  touching the Prf or its key.  The counter is reset so there
-    //  are again 2^CtrBits counters available.
-    void restart(domain_type start){ 
-        if( DomainTraits::template clr_highbits<CtrBits>(start) )
+    // restart - restart the counter with a new 'base counter'.  The
+    //  Prf and key are unchanged.  The high CtrBits of the new base
+    //  counter must be zero - those bits are incremented by the
+    //  engine's operator()() and discard() members.
+    void restart(domain_type base){ 
+        if( DomainTraits::template clr_highbits<CtrBits>(base) )
             BOOST_THROW_EXCEPTION(std::invalid_argument("counter_based_engine:: high bits of key are reserved for internal use."));
             
-        c = start;
-        next = 0;
+        setctr(base, 0);
     }
 
 #if !defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)

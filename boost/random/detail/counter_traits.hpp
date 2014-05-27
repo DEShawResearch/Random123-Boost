@@ -194,6 +194,8 @@ public:
     }
 
     static CtrType make_counter(uintmax_t v = 0){
+        // N.B.  will throw if v has non-zero bits that
+        // don't 'fit' in CtrType.
         return make_counter(&v, &v+1);
     }
 
