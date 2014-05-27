@@ -23,6 +23,9 @@
 # #            intel/ccompxe/2011.2.137-05/icc/bin
 # #export CXX=icpc
 #
+# #garden load llvm_clang/3.4-06/bin
+# #export CXX=clang++
+#
 # garden strip-colons
 #
 # make -f "$0" "$@"
@@ -44,18 +47,29 @@ ifeq ($(CXX),icpc)
 # grok the contents of the latest g++ STL includes.
 CXXFLAGS+=-ggdb -fast
 CXXFLAGS+=-diag-disable 279 # 'controlling expression is a constant'
+CXXFLAGS+=-diag-disable 186 # 'pointless comarison of unsigned integer with zero'
+CXXFLAGS+=-diag-disable 1292 # 'attribute "__may_alias__" ignored'
 gcclib=$(shell $(newgcc) --print-file-name=libstdc++.so)
 LDFLAGS+=-Wl,-rpath=$(dir $(gcclib))
 LDLIBS+=$(gcclib)
+
+else ifeq ($(CXX),clang++)
+
+### clang3.4, boost/1_55 and threads don't play well together!!
+COMMONFLAGS=-Wall $(OPTIMIZE) -march=native
+CXXFLAGS+=$(COMMONFLAGS) -std=c++03
+CXXFLAGS+=-Wno-unsequenced
+
 else # g++
 
 COMMONFLAGS=-Wall $(OPTIMIZE) -march=native -Wno-unused-local-typedefs
 #CXXFLAGS+=$(COMMONFLAGS) -std=c++03
 CXXFLAGS+=$(COMMONFLAGS) -std=c++11
 CFLAGS+=$(COMMONFLAGS) -std=gnu99
-LDLIBS+=-lboost_thread -lboost_system
 
 endif
+
+LDLIBS+=-lboost_thread -lboost_system
 
 %.s : %.cpp
 	$(CXX) -S $(filter-out %gdb,$(CXXFLAGS) $(CPPFLAGS)) $<

@@ -319,8 +319,7 @@ public:
         BOOST_STATIC_CONSTANT(T, incr_stride = T(1)<<((Nbits - HighBits)%value_bits));
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
-        // FullCtrWords&& silences a bogus warning from icpc.  Consider -disable-diag 411 instead.
-        for(unsigned i=0; FullCtrWords && (i<FullCtrWords); ++i){
+        for(unsigned i=0; i<FullCtrWords; ++i){
             *p += 1;
             if(*p++)
                 return d;
@@ -342,8 +341,7 @@ public:
         BOOST_STATIC_CONSTANT(boost::uintmax_t, lastword_maxn = low_bits_mask_t<value_bits-lastword_loctrbit>::sig_bits);
         BOOST_STATIC_CONSTANT(unsigned, FullCtrWords = HighBits/value_bits);
         typename CtrType::reverse_iterator p = d.rbegin();
-        // FullCtrWords&& silences a bogus warning from icpc.  Consider -diag-disable 186 instead.
-        for(unsigned i=0; FullCtrWords && (i<FullCtrWords); ++i){
+        for(unsigned i=0; i<FullCtrWords; ++i){
             *p += T(n);
             bool carry = (*p++ < T(n));
             n >>= value_bits-1; n>>=1;

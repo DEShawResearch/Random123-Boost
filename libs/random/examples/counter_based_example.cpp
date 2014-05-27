@@ -52,7 +52,7 @@ void assignmasses(atom* atoms, size_t Natoms, float m1, float m2, const Prf::key
     engine_t cbeng(key);
     for(size_t i=0; i<Natoms; ++i){
 #if __cplusplus>=201103L && defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
-        cbeng.restart({atoms[i].id, 0, uint32_t(MASS_ASSIGN_CTXT)});
+        cbeng.restart({atoms[i].id, 0, MASS_ASSIGN_CTXT});
 #else
         uint32_t base32[3] = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
         Prf::domain_type start = engine_t::domain_traits::make_counter(&base32[0], &base32[3]);
@@ -73,7 +73,7 @@ void thermalize(atom* atoms, size_t Natoms, uint32_t timestep, const Prf::key_ty
         float rmsvelocity = sqrt(kT/atoms[i].mass);
         normal_distribution<float> mbd(0., rmsvelocity);
 #if __cplusplus>=201103L && defined(BOOST_NO_CXX11_HDR_INITIALIZER_LIST)
-        cbeng.restart({atoms[i].id, timestep, uint32_t(THERMALIZE_CTXT)});
+        cbeng.restart({atoms[i].id, timestep, THERMALIZE_CTXT});
 #else
         uint32_t base32[3] = {atoms[i].id, timestep, THERMALIZE_CTXT};
         Prf::domain_type start = engine_t::domain_traits::make_counter(&base32[0], &base32[3]);
@@ -139,7 +139,7 @@ int main(int argc, char **argv){
     for(size_t i=0; i<atoms.size(); ++i){
         atoms[i].id = i;
     }
-    Prf::key_type key = {seed};
+    Prf::key_type key = {{seed}};
     std::cout << "running with " << nthread << " threads\n";
     long timestep = 1;
     // Pick random masses uniformly between Hydrogen (1amu) and Oxygen (16amu).

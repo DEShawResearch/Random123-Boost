@@ -20,6 +20,22 @@
 #include <initializer_list>
 #endif
 
+#if (defined(__ICC) && __ICC<1210) || (defined(_MSC_VER) && !defined(_WIN64))
+/* Is there an intrinsic to assemble an __m128i from two 64-bit words? 
+   If not, use the 4x32-bit intrisic instead.  N.B.  It looks like Intel
+   added _mm_set_epi64x to icc version 12.1 in Jan 2012.
+*/
+inline __m128i _mm_set_epi64x(uint64_t v1, uint64_t v0){
+    union{
+        uint64_t u64;
+        uint32_t u32[2];
+    } u1, u0;
+    u1.u64 = v1;
+    u0.u64 = v0;
+    return _mm_set_epi32(u1.u32[1], u1.u32[0], u0.u32[1], u0.u32[0]);
+}
+#endif
+
 namespace boost{
 namespace random{
 namespace detail{
@@ -161,6 +177,9 @@ public:
             case 1: return _mm_extract_epi64(v, 1);
             }
             BOOST_THROW_EXCEPTION(std::out_of_range("nth_result(n)"));
+        default:
+            // Silence a warning from icpc:
+            BOOST_THROW_EXCEPTION(std::out_of_range("can't get here"));
         }
     }
 };

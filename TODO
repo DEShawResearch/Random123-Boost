@@ -6,9 +6,10 @@ o Documentation
 o tests (use the Boost.Test framework)
  - the existing boost test_generator.ipp is a good start, but
    we need more:
-     + directly test counter_traits rather than indirectly
+     + PARTIAL - directly test counter_traits rather than indirectly
        via counter_based_engine.
      + concept checker for counter_traits.
+     + more tests in test_counter_detail.cpp.
      + increments that wrap over multiple words and that exhaust
        the CounterBits.
      + tests of different CounterBits and verification that
@@ -34,10 +35,10 @@ o tests (use the Boost.Test framework)
    idea.  But additional assurance would be provided by running the
    output through TestU01.
 
-    + May 8, 2014 - ran test of:
+    + May 26, 2014 - ran test of:
        counter_based_engine<threefry<4, uint64_t, 12>, 64, uint32_t> engine;
       with bigcrush.  The good news is that it passed all the tests.
-      See tests/bigcrush.out.
+      See tests/bigcrush.out2.
       That's definitely reassuring.  A few more tests would be nice.
       (They might go faster if we read from stdin and used a separate
       process to generate the randoms)
