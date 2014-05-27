@@ -130,16 +130,16 @@ loop:
 
     In C++11, with initializer-lists, this looks like:
 
-         cbeng.restart({atoms[i].id, timestep, THERMALIZE_CTXT}
+         cbeng.restart({atoms[i].id, timestep, THERMALIZE_CTXT})
 
-Without initializer lists, it's slightly more verbose to create an
+ Without initializer lists, it's slightly more verbose to create an
 instance of the domain type:
 
          uint32_t base[3] = {atoms[i].id, 0, MASS_ASSIGN_CTXT};
          Prf::domain_type d = engine_t::domain_traits::make_counter(&base[0], &base[3]);
          cbeng.restart(d);
 
-    Counter_based_urngs restart()-ed or constructed from different
+ Counter_based_urngs restart()-ed or constructed from different
 bases, even bases that differ in only a single bit, will generate
 independent, non-overlapping sequences of random values.  Thus, by
 choosing a value in the domain that encodes some program-specific
@@ -149,7 +149,7 @@ other streams.  The additional constant THERMALIZE_CTXT distinguishes
 this loop from any other loop or context in the program, eliminating
 the possibility that the same sequence will be generated elsewhere.
 
-    Notice that the random values generated for a particular atom at a
+Notice that the random values generated for a particular atom at a
 particular timestep are independent of the number of threads, how they
 are scheduled and the assignment of atoms to threads.
 
@@ -243,8 +243,8 @@ independent of thread scheduling or work assignment.
 'Seeding' a counter_based_engine corresponds to 'keying' its
 underlying Prf.  But note that the key space is typically much larger
 than a single value of the engine's output_type.  So,
-counter_based_engine has additional constructors that allow it to be
-constructed or seeded from a value of the Prf's key_type or from
+counter_based_engine has additional members that allow it to be
+constructed or seeded from a uintmax_t, a value of the Prf's key_type or from
 an existing Prf.  I.e.,
 
     counter_based_engine(uintmax_t);
