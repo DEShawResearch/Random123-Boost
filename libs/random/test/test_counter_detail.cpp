@@ -73,6 +73,44 @@ uint1024_t get_sample_counter(BOOST_RANDOM_URNG& urng)
     return counter;
 }
 
+BOOST_AUTO_TEST_CASE(test_overflow)
+{
+    engine_t urng;
+    engine_t urng0;
+
+    // use 'private' knowledge of the external
+    // stream representation to initialize a
+    // nearly maximal counter.
+    std::stringstream ss;
+    ss << 0;
+    for(size_t i=0; i<ndomain; ++i)
+        ss << ' ' << ~dvalue_type(0);
+    for(size_t i=0; i<nkey; ++i)
+        ss << ' ' << 0;
+    ss >> urng0;
+    BOOST_CHECK(ss);
+
+    // Run the urng right up to the edge..
+    urng = urng0;
+    for(unsigned i=0; i<nrange; ++i){
+        urng();
+        BOOST_CHECK_NE(urng, urng0);
+    }
+    // Verify that it throws when we push over the edge
+    BOOST_CHECK_THROW(urng(), std::invalid_argument);
+
+    // Try again with discard:
+    urng = urng0;
+    urng.discard(nrange);
+    BOOST_CHECK_NE(urng, urng0);
+    BOOST_CHECK_THROW(urng(), std::invalid_argument);
+
+    // Make sure that discard itself throws if it pushes us over the
+    // edge.
+    urng = urng0;
+    BOOST_CHECK_THROW(urng.discard(nrange+1), std::invalid_argument);
+}
+
 BOOST_AUTO_TEST_CASE(test_counter_detail)
 {
     uint1024_t expected,actual,discards;
@@ -100,23 +138,5 @@ BOOST_AUTO_TEST_CASE(test_counter_detail)
         actual = get_sample_counter(urng);
         BOOST_CHECK_EQUAL(expected, actual);
     }
-    
-    // use 'private' knowledge of the external
-    // stream representation to initialize a
-    // max counter.
-    std::stringstream ss;
-    ss << 0;
-    for(size_t i=0; i<ndomain; ++i)
-        ss << ' ' << ~dvalue_type(0);
-    for(size_t i=0; i<nkey; ++i)
-        ss << ' ' << 0;
-
-    ss >> urng;
-    BOOST_CHECK(ss);
-    for(unsigned i=0; i<nrange; ++i)
-        urng();
-
-    // Verify that it throws when we push past the end.
-    BOOST_CHECK_THROW(urng(), std::invalid_argument);
 }
 
