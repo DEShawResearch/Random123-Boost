@@ -18,21 +18,30 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include <boost/random/threefry.hpp>
+#include <boost/random/philox.hpp>
 #include <boost/random/counter_based_engine.hpp>
 
 #define BOOST_TEST_MODULE counter_engine_counter
 #include <boost/test/included/unit_test.hpp>
 
 #define BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE uint64_t
-#define BOOST_PSEUDO_RANDOM_FUNCTION boost::random::threefry<4, uint64_t>
+#define BOOST_PSEUDO_RANDOM_FUNCTION boost::random::philox<4, uint64_t>
 #define BOOST_COUNTER_BASED_ENGINE_CTRBITS 128u
 
 typedef boost::random::counter_based_engine<BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE, BOOST_PSEUDO_RANDOM_FUNCTION, BOOST_COUNTER_BASED_ENGINE_CTRBITS> engine_t;
 #define BOOST_RANDOM_URNG engine_t
 
-static const unsigned dvalbits = std::numeric_limits<BOOST_COUNTER_BASED_ENGINE_RESULT_TYPE>::digits;
+typedef engine_t::domain_type::value_type dvalue_type;
 static const unsigned ctrbits = BOOST_RANDOM_URNG::counter_bits;
+
+static const unsigned dvalbits = std::numeric_limits<dvalue_type>::digits;
 static const unsigned ndomain = BOOST_RANDOM_URNG::domain_traits::Nbits / dvalbits;
+
+static const unsigned nrange = engine_t::results_per_counter();
+
+typedef engine_t::key_type::value_type kvalue_type;
+static const unsigned kvalbits = std::numeric_limits<kvalue_type>::digits;
+static const unsigned nkey = engine_t::key_traits::Nbits/kvalbits;
 
 using namespace boost::multiprecision;
 
@@ -58,69 +67,10 @@ uint1024_t get_sample_counter(BOOST_RANDOM_URNG& urng)
     }
     
     counter &= (uint1024_t(1)<<ctrbits) - 1;
-    counter = counter * ndomain + subcounter;
+    counter = counter * nrange + subcounter;
         
     //std::cout << "counter=" <<  counter << " (" << os.str() << ")" << std::endl;
     return counter;
-}
-
-
-/*
- * Set the sample counter value
- */
-void set_sample_counter(BOOST_RANDOM_URNG& urng, uint1024_t counter)
-{
-    uint1024_t digit;
-    unsigned subcounter;
-    
-    std::stringstream oldstate;
-    oldstate << urng;
-
-    // pop the counter from the captured state
-    oldstate >> subcounter;
-    for (unsigned i=0; i<ndomain; ++i)
-        oldstate >> digit;
-        
-    // store the remaining state in a string
-    std::string remainder;
-    std::getline(oldstate, remainder);
-    
-    // construct the new counter part of the state
-    std::stringstream newstate;
-    newstate << (counter % ndomain);
-
-    counter /= ndomain;
-    
-    int bits_already_set = 0;
-    for (int i=ndomain-1; i>=0; --i) {
-    
-        unsigned bits_this_round = std::min(dvalbits, ctrbits - bits_already_set);
-        
-        digit = counter >> (i*dvalbits);
-        digit &=  (uint1024_t(1)<<bits_this_round) - 1;
-        newstate << ' ' << digit;
-        
-        bits_already_set += bits_this_round;
-    }
-
-    newstate << ' ' << remainder;
-    
-    // set the new state
-    newstate >> urng;
-}
-
-/*
- * The max sample counter value
- */
-uint1024_t max_sample_counter()
-{
-    uint1024_t ret(1);
-    ret <<= ctrbits;
-    --ret;
-    --ret;
-    ret *= ndomain;
-    ret += ndomain - 1;
-    return ret;
 }
 
 BOOST_AUTO_TEST_CASE(test_counter_detail)
@@ -151,15 +101,22 @@ BOOST_AUTO_TEST_CASE(test_counter_detail)
         BOOST_CHECK_EQUAL(expected, actual);
     }
     
-    // advance to the larget posible counter value
-    set_sample_counter(urng, max_sample_counter() );
+    // use 'private' knowledge of the external
+    // stream representation to initialize a
+    // max counter.
+    std::stringstream ss;
+    ss << 0;
+    for(size_t i=0; i<ndomain; ++i)
+        ss << ' ' << ~dvalue_type(0);
+    for(size_t i=0; i<nkey; ++i)
+        ss << ' ' << 0;
 
-    
-    // trigger an overflow?
-    std::cout << "before overflow: counter=" << get_sample_counter(urng) << " state=" << urng <<  std::endl;
-    urng();
-    std::cout << "after overflow: counter=" << get_sample_counter(urng) << " state=" << urng <<  std::endl;
-    urng();
-    std::cout << "after overflow: counter=" << get_sample_counter(urng) << " state=" << urng <<  std::endl;
+    ss >> urng;
+    BOOST_CHECK(ss);
+    for(unsigned i=0; i<nrange; ++i)
+        urng();
+
+    // Verify that it throws when we push past the end.
+    BOOST_CHECK_THROW(urng(), std::invalid_argument);
 }
 
